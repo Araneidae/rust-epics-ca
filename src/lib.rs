@@ -7,10 +7,11 @@ extern {
     fn ca_create_channel(
         pv: *const c_char,
         on_connect : extern fn(args: ca_connection_handler_args),
-        context: *mut c_void,
+        context: *const c_void,
         priority: c_uint,
-        channel_id: *mut ChanId) -> c_int;
-    fn ca_puser(channel: ChanId) -> *mut c_void;
+        id: *mut ChanId) -> c_int;
+    fn ca_clear_channel(id: ChanId) -> c_int;
+    fn ca_puser(channel: ChanId) -> *const c_void;
     pub fn ca_pend_event(timeout : f64) -> c_int;
 }
 
@@ -23,6 +24,7 @@ enum ca_preemptive_callback_select {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 struct ca_connection_handler_args {
     chid: ChanId,
     op: c_long,
@@ -31,31 +33,60 @@ struct ca_connection_handler_args {
 #[repr(C)]
 #[derive(Debug)]
 struct oldChannelNotify { _unused: [u8; 0] }
-type ChanId = *mut oldChannelNotify;
+type ChanId = *const oldChannelNotify;
 
 
-pub fn safe_context_create()
+pub fn context_create()
 {
     unsafe { ca_context_create(
         ca_preemptive_callback_select::ca_disable_preemptive_callback) };
 }
 
 
-extern fn on_connect(args: ca_connection_handler_args)
-{
-    println!("Hello there: {:?} {}", args.chid, args.op);
-    let context = unsafe { ca_puser(args.chid) };
-    println!("Context: {:?}", context);
+#[derive(Debug)]
+pub struct Channel {
+    name: String,
+    id: ChanId,
 }
 
-pub fn create_channel(pv : &str)
+
+extern fn on_connect(args: ca_connection_handler_args)
 {
-    let cpv = std::ffi::CString::new(pv).unwrap();
-    let mut chan_id = std::mem::MaybeUninit::uninit();
-    let rc = unsafe {
-        ca_create_channel(
-            cpv.as_ptr(), on_connect, std::ptr::null_mut(), 0,
-            chan_id.as_mut_ptr()) };
-    let chan_id = unsafe { chan_id.assume_init() };
-    println!("ca_create_channel => {:} {:?}", rc, chan_id);
+    println!("Processing callback: {:?}", args);
+    let channel: &Channel = unsafe {
+        &*(ca_puser(args.chid) as *const Channel) };
+    println!("Channel: {:?}", channel);
+}
+
+impl Channel {
+    pub fn new(pv: &str) -> Box<Channel>
+    {
+        let mut channel = Box::new(Channel {
+            name: pv.to_owned(),
+            id: 0 as _,
+        });
+
+        let cpv = std::ffi::CString::new(pv).unwrap();
+        let mut chan_id = 0 as ChanId;
+        let rc = unsafe {
+            ca_create_channel(
+                cpv.as_ptr(),
+                on_connect,
+                channel.as_ref() as *const _ as *const c_void,
+                0,
+                &mut chan_id as *mut ChanId) };
+        assert!(rc == 1);
+
+        channel.id = chan_id;
+        channel
+    }
+}
+
+impl Drop for Channel {
+    fn drop(self: &mut Channel)
+    {
+        println!("Dropping {:?}", self);
+        let rc = unsafe { ca_clear_channel(self.id) };
+        assert!(rc == 1);
+    }
 }
