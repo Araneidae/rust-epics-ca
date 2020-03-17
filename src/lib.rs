@@ -50,12 +50,21 @@ pub struct Channel {
 }
 
 
+unsafe fn voidp_to_ref<'a, T>(p: *const c_void) -> &'a T
+{
+    &*(p as *const T)
+}
+
+fn ref_to_voidp<T>(r: &T) -> *const c_void
+{
+    r as *const T as *const c_void
+}
+
+
 extern fn on_connect(args: ca_connection_handler_args)
 {
-    println!("Processing callback: {:?}", args);
-    let channel: &Channel = unsafe {
-        &*(ca_puser(args.chid) as *const Channel) };
-    println!("Channel: {:?}", channel);
+    let channel: &Channel = unsafe { voidp_to_ref(ca_puser(args.chid)) };
+    println!("on_connect: {} {:?}", args.op, channel);
 }
 
 impl Channel {
@@ -63,18 +72,15 @@ impl Channel {
     {
         let mut channel = Box::new(Channel {
             name: pv.to_owned(),
-            id: 0 as _,
+            id: 0 as ChanId,
         });
 
         let cpv = std::ffi::CString::new(pv).unwrap();
         let mut chan_id = 0 as ChanId;
         let rc = unsafe {
             ca_create_channel(
-                cpv.as_ptr(),
-                on_connect,
-                channel.as_ref() as *const _ as *const c_void,
-                0,
-                &mut chan_id as *mut ChanId) };
+                cpv.as_ptr(), on_connect, ref_to_voidp(channel.as_ref()),
+                0, &mut chan_id as *mut ChanId) };
         assert!(rc == 1);
 
         channel.id = chan_id;
