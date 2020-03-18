@@ -9,3 +9,4 @@ build = "build.rs"
 
 [dependencies]
 libc = "*"
+futures = "*"
