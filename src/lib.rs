@@ -106,6 +106,8 @@ extern fn on_connect(args: ca_connection_handler_args)
 impl Channel {
     pub fn new(pv: &str) -> Box<Channel>
     {
+        context_create();
+
         let mut channel = Box::new(Channel {
             name: pv.to_owned(),
             id: 0 as ChanId,
@@ -135,8 +137,14 @@ impl Drop for Channel {
 }
 
 
-pub fn context_create()
+
+// Code to ensure that the context is valid
+static CA_CONTEXT_CREATE: std::sync::Once = std::sync::Once::new();
+fn context_create()
 {
-    unsafe { ca_context_create(
-        ca_preemptive_callback_select::ca_enable_preemptive_callback) };
+    CA_CONTEXT_CREATE.call_once(|| {
+        println!("Calling ca_context_create");
+        unsafe { ca_context_create(
+            ca_preemptive_callback_select::ca_enable_preemptive_callback) };
+    });
 }
