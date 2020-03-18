@@ -1,7 +1,7 @@
 mod cadef;
 
 use std::sync::Mutex;
-use libc;
+use libc::c_void;
 use crate::cadef::*;
 
 
@@ -17,22 +17,15 @@ enum BasicDbrType {
 }
 
 
-pub fn context_create()
-{
-    unsafe { ca_context_create(
-        ca_preemptive_callback_select::ca_disable_preemptive_callback) };
-}
-
-
 #[allow(unused_unsafe)]
-unsafe fn voidp_to_ref<'a, T>(p: *const libc::c_void) -> &'a T
+unsafe fn voidp_to_ref<'a, T>(p: *const c_void) -> &'a T
 {
     unsafe { &*(p as *const T) }
 }
 
-fn ref_to_voidp<T>(r: &T) -> *const libc::c_void
+fn ref_to_voidp<T>(r: &T) -> *const c_void
 {
-    r as *const T as *const libc::c_void
+    r as *const T as *const c_void
 }
 
 
@@ -92,7 +85,9 @@ extern fn on_connect(args: ca_connection_handler_args)
                 (Some(field_type), Some(field_count)) =>
                     ChannelState::Connected { field_type, field_count },
                 x => {
-                    // Treat this as disconnected
+                    // Treat this as disconnected.  Don't actually know if this
+                    // can happen, depends on how well the connection callback
+                    // is synchronised with the channel state.
                     println!("Failed to read {:?}", x);
                     ChannelState::Disconnected
                 }
@@ -102,7 +97,7 @@ extern fn on_connect(args: ca_connection_handler_args)
             ChannelState::Disconnected
         },
         x =>
-            panic!("Unexpected state {}", x),
+            panic!("Unexpected connection state {}", x),
     };
     println!("state: {:?}", state);
     *channel.state.lock().unwrap() = state;
@@ -139,7 +134,9 @@ impl Drop for Channel {
     }
 }
 
-pub fn safe_pend_event(timeout: f64)
+
+pub fn context_create()
 {
-    unsafe { ca_pend_event(timeout) };
+    unsafe { ca_context_create(
+        ca_preemptive_callback_select::ca_enable_preemptive_callback) };
 }

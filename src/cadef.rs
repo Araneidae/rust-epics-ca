@@ -1,5 +1,6 @@
 use libc;
 
+// Entry points from cadef.h
 #[link(name = "ca")]
 extern {
     pub fn ca_context_create(
@@ -14,12 +15,11 @@ extern {
     pub fn ca_puser(channel: ChanId) -> *const libc::c_void;
     pub fn ca_field_type(channel: ChanId) -> libc::c_short;
     pub fn ca_element_count(channel: ChanId) -> libc::c_ulong;
-    pub fn ca_pend_event(timeout : f64) -> libc::c_int;
 }
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
-#[allow(dead_code)]     // For unused variant
+#[allow(dead_code)]
 pub enum ca_preemptive_callback_select {
     ca_disable_preemptive_callback,
     ca_enable_preemptive_callback,
@@ -32,9 +32,11 @@ pub struct ca_connection_handler_args {
     pub op: libc::c_long,
 }
 
+// Valid values for ca_connection_handler_args::op
 pub const CA_OP_CONN_UP: libc::c_long = 6;
 pub const CA_OP_CONN_DOWN: libc::c_long = 7;
 
+// Opaque channel identifier
 #[repr(C)]
 #[derive(Debug)]
 pub struct oldChannelNotify { _unused: [u8; 0] }
