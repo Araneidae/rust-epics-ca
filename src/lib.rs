@@ -30,7 +30,7 @@ enum ChannelState {
 pub struct Channel {
     name: String,
     id: ChanId,
-    state: sync::Mutex<ChannelState>,
+    state: sync::RwLock<ChannelState>,
 }
 
 
@@ -90,7 +90,7 @@ extern fn on_connect(args: ca_connection_handler_args)
         },
     };
     println!("state: {:?}", state);
-    *channel.state.lock().unwrap() = state;
+    *channel.state.write().unwrap() = state;
 }
 
 
@@ -102,7 +102,7 @@ impl Channel {
         let mut channel = Box::new(Channel {
             name: pv.to_owned(),
             id: 0 as ChanId,
-            state: sync::Mutex::new(ChannelState::Unconnected),
+            state: sync::RwLock::new(ChannelState::Unconnected),
         });
 
         let cpv = ffi::CString::new(pv).unwrap();
