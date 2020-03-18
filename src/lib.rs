@@ -1,45 +1,9 @@
+mod cadef;
+
 use std::sync::Mutex;
 use libc;
+use crate::cadef::*;
 
-#[link(name = "ca")]
-extern {
-    fn ca_context_create(
-        select: ca_preemptive_callback_select) -> libc::c_int;
-    fn ca_create_channel(
-        pv: *const libc::c_char,
-        on_connect : extern fn(args: ca_connection_handler_args),
-        context: *const libc::c_void,
-        priority: libc::c_uint,
-        id: *mut ChanId) -> libc::c_int;
-    fn ca_clear_channel(id: ChanId) -> libc::c_int;
-    fn ca_puser(channel: ChanId) -> *const libc::c_void;
-    fn ca_field_type(channel: ChanId) -> libc::c_short;
-    fn ca_element_count(channel: ChanId) -> libc::c_ulong;
-    pub fn ca_pend_event(timeout : f64) -> libc::c_int;
-}
-
-#[repr(C)]
-#[allow(non_camel_case_types)]
-#[allow(dead_code)]     // For unused variant
-enum ca_preemptive_callback_select {
-    ca_disable_preemptive_callback,
-    ca_enable_preemptive_callback,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-struct ca_connection_handler_args {
-    chid: ChanId,
-    op: libc::c_long,
-}
-
-const CA_OP_CONN_UP: libc::c_long = 6;
-const CA_OP_CONN_DOWN: libc::c_long = 7;
-
-#[repr(C)]
-#[derive(Debug)]
-struct oldChannelNotify { _unused: [u8; 0] }
-type ChanId = *const oldChannelNotify;
 
 #[derive(Debug)]
 enum BasicDbrType {
@@ -173,4 +137,9 @@ impl Drop for Channel {
         let rc = unsafe { ca_clear_channel(self.id) };
         assert!(rc == 1);
     }
+}
+
+pub fn safe_pend_event(timeout: f64)
+{
+    unsafe { ca_pend_event(timeout) };
 }
