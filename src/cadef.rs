@@ -41,3 +41,17 @@ pub const CA_OP_CONN_DOWN: libc::c_long = 7;
 #[derive(Debug)]
 pub struct oldChannelNotify { _unused: [u8; 0] }
 pub type ChanId = *const oldChannelNotify;
+
+
+// Helper methods for void* conversion
+
+#[allow(unused_unsafe)]
+pub unsafe fn voidp_to_ref<'a, T>(p: *const libc::c_void) -> &'a T
+{
+    unsafe { &*(p as *const T) }
+}
+
+pub fn ref_to_voidp<T>(r: &T) -> *const libc::c_void
+{
+    r as *const T as *const libc::c_void
+}

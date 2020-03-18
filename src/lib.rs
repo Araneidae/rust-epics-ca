@@ -1,7 +1,6 @@
 mod cadef;
 
-use std::sync::Mutex;
-use libc::c_void;
+use std::{ffi, time, sync};
 use crate::cadef::*;
 
 
@@ -14,18 +13,6 @@ enum BasicDbrType {
     DbrChar,
     DbrLong,
     DbrDouble,
-}
-
-
-#[allow(unused_unsafe)]
-unsafe fn voidp_to_ref<'a, T>(p: *const c_void) -> &'a T
-{
-    unsafe { &*(p as *const T) }
-}
-
-fn ref_to_voidp<T>(r: &T) -> *const c_void
-{
-    r as *const T as *const c_void
 }
 
 
@@ -43,7 +30,7 @@ enum ChannelState {
 pub struct Channel {
     name: String,
     id: ChanId,
-    state: Mutex<ChannelState>,
+    state: sync::Mutex<ChannelState>,
 }
 
 
@@ -74,6 +61,7 @@ fn get_element_count(id: ChanId) -> Option<usize>
 }
 
 
+// Called whenever the associated channel connection state changes.
 extern fn on_connect(args: ca_connection_handler_args)
 {
     let channel: &Channel = unsafe { voidp_to_ref(ca_puser(args.chid)) };
@@ -96,12 +84,15 @@ extern fn on_connect(args: ca_connection_handler_args)
         CA_OP_CONN_DOWN => {
             ChannelState::Disconnected
         },
-        x =>
-            panic!("Unexpected connection state {}", x),
+        x => {
+            println!("Unexpected connection state {}", x);
+            ChannelState::Disconnected
+        },
     };
     println!("state: {:?}", state);
     *channel.state.lock().unwrap() = state;
 }
+
 
 impl Channel {
     pub fn new(pv: &str) -> Box<Channel>
@@ -111,10 +102,10 @@ impl Channel {
         let mut channel = Box::new(Channel {
             name: pv.to_owned(),
             id: 0 as ChanId,
-            state: Mutex::new(ChannelState::Unconnected),
+            state: sync::Mutex::new(ChannelState::Unconnected),
         });
 
-        let cpv = std::ffi::CString::new(pv).unwrap();
+        let cpv = ffi::CString::new(pv).unwrap();
         let mut chan_id = 0 as ChanId;
         let rc = unsafe {
             ca_create_channel(
@@ -126,6 +117,7 @@ impl Channel {
         channel
     }
 }
+
 
 impl Drop for Channel {
     fn drop(self: &mut Channel)
@@ -139,7 +131,7 @@ impl Drop for Channel {
 
 
 // Code to ensure that the context is valid
-static CA_CONTEXT_CREATE: std::sync::Once = std::sync::Once::new();
+static CA_CONTEXT_CREATE: sync::Once = sync::Once::new();
 fn context_create()
 {
     CA_CONTEXT_CREATE.call_once(|| {
