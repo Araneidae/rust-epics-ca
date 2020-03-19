@@ -1,20 +1,20 @@
-use libc;
+use libc::{c_char, c_short, c_int, c_uint, c_long, c_ulong, c_void};
 
 // Entry points from cadef.h
 #[link(name = "ca")]
 extern {
     pub fn ca_context_create(
-        select: ca_preemptive_callback_select) -> libc::c_int;
+        select: ca_preemptive_callback_select) -> c_int;
     pub fn ca_create_channel(
-        pv: *const libc::c_char,
+        pv: *const c_char,
         on_connect : extern fn(args: ca_connection_handler_args),
-        context: *const libc::c_void,
-        priority: libc::c_uint,
-        id: *mut ChanId) -> libc::c_int;
-    pub fn ca_clear_channel(id: ChanId) -> libc::c_int;
-    pub fn ca_puser(channel: ChanId) -> *const libc::c_void;
-    pub fn ca_field_type(channel: ChanId) -> libc::c_short;
-    pub fn ca_element_count(channel: ChanId) -> libc::c_ulong;
+        context: *const c_void,
+        priority: c_uint,
+        id: *mut ChanId) -> c_int;
+    pub fn ca_clear_channel(id: ChanId) -> c_int;
+    pub fn ca_puser(channel: ChanId) -> *const c_void;
+    pub fn ca_field_type(channel: ChanId) -> c_short;
+    pub fn ca_element_count(channel: ChanId) -> c_ulong;
 }
 
 #[repr(C)]
@@ -29,12 +29,12 @@ pub enum ca_preemptive_callback_select {
 #[derive(Debug)]
 pub struct ca_connection_handler_args {
     pub chid: ChanId,
-    pub op: libc::c_long,
+    pub op: c_long,
 }
 
 // Valid values for ca_connection_handler_args::op
-pub const CA_OP_CONN_UP: libc::c_long = 6;
-pub const CA_OP_CONN_DOWN: libc::c_long = 7;
+pub const CA_OP_CONN_UP: c_long = 6;
+pub const CA_OP_CONN_DOWN: c_long = 7;
 
 // Opaque channel identifier
 #[repr(C)]
@@ -46,12 +46,12 @@ pub type ChanId = *const oldChannelNotify;
 // Helper methods for void* conversion
 
 #[allow(unused_unsafe)]
-pub unsafe fn voidp_to_ref<'a, T>(p: *const libc::c_void) -> &'a T
+pub unsafe fn voidp_to_ref<'a, T>(p: *const c_void) -> &'a T
 {
     unsafe { &*(p as *const T) }
 }
 
-pub fn ref_to_voidp<T>(r: &T) -> *const libc::c_void
+pub fn ref_to_voidp<T>(r: &T) -> *const c_void
 {
-    r as *const T as *const libc::c_void
+    r as *const T as *const c_void
 }
