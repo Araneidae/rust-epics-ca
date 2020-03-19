@@ -1,6 +1,7 @@
 // Channel implementation
 
 use std::{ffi, sync, future, pin, task};
+use static_assertions::*;
 
 use crate::cadef as cadef;
 use crate::cadef::{ChanId, ref_to_voidp, voidp_to_ref};
@@ -40,6 +41,10 @@ pub struct Channel {
     state: sync::Mutex<ChannelState>,
 }
 
+// Ensure we're safe shipping Channels around, in particular on_connect is on
+// another thread.
+assert_impl_all!(Channel: Send);
+
 
 fn get_field_type(id: ChanId) -> Option<BasicDbrType>
 {
@@ -71,8 +76,7 @@ fn get_element_count(id: ChanId) -> Option<usize>
 // Called whenever the associated channel connection state changes.
 extern fn on_connect(args: cadef::ca_connection_handler_args)
 {
-    let channel: &Channel = unsafe {
-        voidp_to_ref(cadef::ca_puser(args.chid)) };
+    let channel: &Channel = unsafe { voidp_to_ref(cadef::ca_puser(args.chid)) };
     println!("on_connect: {} {:?}", args.op, channel);
     let mut connected = false;
     let connection = match args.op {
@@ -119,7 +123,7 @@ impl Channel {
 
         let mut channel = Box::new(Channel {
             name: pv.to_owned(),
-            id: 0 as ChanId,
+            id: cadef::CHAN_ID_VOID,
             state: sync::Mutex::new(ChannelState {
                 connection: ChannelConnection::Unconnected,
                 wakers: Vec::new(),
@@ -127,7 +131,7 @@ impl Channel {
         });
 
         let cpv = ffi::CString::new(pv).unwrap();
-        let mut chan_id = 0 as ChanId;
+        let mut chan_id = cadef::CHAN_ID_VOID;
         let rc = unsafe {
             cadef::ca_create_channel(
                 cpv.as_ptr(), on_connect, ref_to_voidp(channel.as_ref()),

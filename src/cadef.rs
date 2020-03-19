@@ -37,10 +37,13 @@ pub const CA_OP_CONN_UP: c_long = 6;
 pub const CA_OP_CONN_DOWN: c_long = 7;
 
 // Opaque channel identifier
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug)]
-pub struct oldChannelNotify { _unused: [u8; 0] }
-pub type ChanId = *const oldChannelNotify;
+#[derive(Clone, Copy)]
+pub struct ChanId(*const c_void);
+unsafe impl Send for ChanId { }
+
+pub const CHAN_ID_VOID: ChanId = ChanId(0 as _);
 
 
 // Helper methods for void* conversion
