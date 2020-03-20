@@ -36,8 +36,8 @@ struct ChannelState {
 
 #[derive(Debug)]
 pub struct Channel {
-    name: String,
-    id: ChanId,
+    pub name: String,
+    pub id: ChanId,
     state: sync::Mutex<ChannelState>,
 }
 

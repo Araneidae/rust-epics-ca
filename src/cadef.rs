@@ -15,6 +15,11 @@ extern {
     pub fn ca_puser(channel: ChanId) -> *const c_void;
     pub fn ca_field_type(channel: ChanId) -> c_short;
     pub fn ca_element_count(channel: ChanId) -> c_ulong;
+    pub fn ca_array_get_callback(
+        channel_type: c_long, count: c_ulong, channel: ChanId,
+        handler: extern fn(args: event_handler_args),
+        context: *const c_void) -> c_int;
+    pub fn ca_flush_io() -> c_int;
 }
 
 #[repr(C)]
@@ -30,6 +35,17 @@ pub enum ca_preemptive_callback_select {
 pub struct ca_connection_handler_args {
     pub chid: ChanId,
     pub op: c_long,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct event_handler_args {
+    pub usr: *const c_void,
+    pub channel: ChanId,
+    pub datatype: c_long,
+    pub count: c_long,
+    pub dbr: *const c_void,
+    pub status: c_int,
 }
 
 // Valid values for ca_connection_handler_args::op
