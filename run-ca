@@ -1,0 +1,11 @@
+#!/bin/sh
+
+[ -e CONFIG ]  &&  source ./CONFIG
+: ${EPICS_BASE:?Must define EPICS_BASE}
+: ${EPICS_HOST_ARCH:=linux-x86_64}
+
+export EPICS_LIB_PATH=$EPICS_BASE/lib/$EPICS_HOST_ARCH
+
+export RUSTFLAGS="-Clink-args=-Wl,-rpath=$EPICS_LIB_PATH"
+
+cargo run

@@ -1,8 +1,10 @@
 // Build script for linking to ca
 
-const LIB_PATH: &str = "/dls_sw/epics/R3.14.12.7/base/lib/linux-x86_64/";
+use std::env;
 
 fn main()
 {
-    println!("cargo:rustc-link-search={:}", LIB_PATH);
+    let lib_path = env::var("EPICS_LIB_PATH")
+        .expect("Must define EPICS_LIB_PATH");
+    println!("cargo:rustc-link-search={:}", lib_path);
 }
