@@ -77,7 +77,6 @@ fn get_element_count(id: ChanId) -> Option<usize>
 extern fn on_connect(args: cadef::ca_connection_handler_args)
 {
     let channel: &Channel = unsafe { voidp_to_ref(cadef::ca_puser(args.chid)) };
-    println!("on_connect: {} {:?}", args.op, channel);
     let mut connected = false;
     let connection = match args.op {
         cadef::CA_OP_CONN_UP => {
@@ -104,12 +103,10 @@ extern fn on_connect(args: cadef::ca_connection_handler_args)
             ChannelConnection::Disconnected
         },
     };
-    println!("connection: {:?}", connection);
     let mut state = channel.state.lock().unwrap();
     state.connection = connection;
     if connected {
         for waker in state.wakers.drain(..) {
-            println!("Calling waker");
             waker.wake();
         }
     }
@@ -144,7 +141,6 @@ impl Channel {
 
     pub async fn wait_connect(&self) -> (BasicDbrType, usize)
     {
-        println!("Waiting for {:?}", self);
         ChannelWait::new(self).await
     }
 }
@@ -154,7 +150,6 @@ static CA_CONTEXT_CREATE: sync::Once = sync::Once::new();
 fn context_create()
 {
     CA_CONTEXT_CREATE.call_once(|| {
-        println!("Calling ca_context_create");
         unsafe { cadef::ca_context_create(
             cadef::ca_preemptive_callback_select
                 ::ca_enable_preemptive_callback) };
@@ -165,7 +160,6 @@ fn context_create()
 impl Drop for Channel {
     fn drop(self: &mut Channel)
     {
-        println!("Dropping {:?}", self);
         let rc = unsafe { cadef::ca_clear_channel(self.id) };
         assert!(rc == 1);
     }
@@ -197,7 +191,6 @@ impl<'a> future::Future for ChannelWait<'a> {
         {
             task::Poll::Ready((field_type, field_count))
         } else {
-            println!("Pushing waker");
             state.wakers.push(context.waker().clone());
             task::Poll::Pending
         }
