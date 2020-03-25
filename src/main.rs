@@ -5,13 +5,17 @@ use epics_ca::*;
 
 fn main()
 {
-    let pv = "SR-DI-DCCT-01:SIGNAL";
-    let result: f64 = block_on(CA::caget(pv));
-    println!("Caget: {} => {}", pv, result);
-    let result: i32 = block_on(CA::caget(pv));
-    println!("Caget: {} => {}", pv, result);
-    let result: String = block_on(CA::caget(pv));
-    println!("Caget: {} => {}", pv, result);
-    let result: Vec<f64> = block_on(CA::caget_vec(pv));
-    println!("Caget: {} => {:?}", pv, result);
+    block_on(async {
+        let pv = "SR-DI-DCCT-01:SIGNAL";
+        let result: f64 = CA::caget(pv).await;
+        println!("Caget: {} => {}", pv, result);
+        let result: i32 = CA::caget(pv).await;
+        println!("Caget: {} => {}", pv, result);
+        let result: String = CA::caget(pv).await;
+        println!("Caget: {} => {}", pv, result);
+        let result: Vec<f64> = CA::caget(pv).await;
+        println!("Caget: {} => {:?}", pv, result);
+        let result: (f64, CaStatusTime) = CA::caget(pv).await;
+        println!("Caget: {} => {:?}", pv, result);
+    });
 }
