@@ -1,5 +1,4 @@
 #!/bin/sh
 
-EPICS_BASE=/home/michael/work/base-3.14.12.7
-PATH=$PATH:$EPICS_BASE/bin/linux-x86_64
+[ -e CONFIG ]  &&  source ./CONFIG
 softIoc -d test-ioc.db
