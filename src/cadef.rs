@@ -2,7 +2,7 @@ use libc::{c_char, c_short, c_int, c_uint, c_long, c_ulong, c_void};
 
 // Entry points from cadef.h
 #[link(name = "ca")]
-extern {
+extern "C" {
     pub fn ca_context_create(
         select: ca_preemptive_callback_select) -> c_int;
     pub fn ca_create_channel(
