@@ -6,6 +6,8 @@ use epics_ca;
 fn main()
 {
     let pv = "SR-DI-DCCT-01:SIGNAL";
-    let result = block_on(epics_ca::caget(pv));
-    println!("{} => {}", pv, result);
+    let result: f64 = block_on(epics_ca::CA::caget(pv));
+    println!("Caget: {} => {}", pv, result);
+    let result: i32 = block_on(epics_ca::CA::caget(pv));
+    println!("Caget: {} => {}", pv, result);
 }

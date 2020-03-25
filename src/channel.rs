@@ -64,7 +64,7 @@ fn get_field_type(id: ChanId) -> Option<BasicDbrType>
 fn get_element_count(id: ChanId) -> Option<usize>
 {
     let count = unsafe { cadef::ca_element_count(id) };
-    if count <= 0 {
+    if count == 0 {
         // Treat this as disconnected
         None
     } else {
@@ -202,4 +202,11 @@ impl<'a> future::Future for ChannelWait<'a> {
             task::Poll::Pending
         }
     }
+}
+
+pub async fn connect(pv: &str) -> (Box<Channel>, BasicDbrType, usize)
+{
+    let channel = Channel::new(pv);
+    let (datatype, count) = channel.wait_connect().await;
+    (channel, datatype, count)
 }
