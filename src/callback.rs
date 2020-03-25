@@ -9,11 +9,11 @@ enum WakerState<T> {
     Ready(T),
 }
 
-pub struct AsyncWaker<T: Sync> {
+pub struct AsyncWaker<T: Send> {
     wakeup: sync::Mutex<WakerState<T>>,
 }
 
-impl<T: Sync> AsyncWaker<T> {
+impl<T: Send> AsyncWaker<T> {
     pub fn new() -> AsyncWaker<T>
     {
         AsyncWaker { wakeup: sync::Mutex::new(WakerState::Idle) }
@@ -35,11 +35,11 @@ impl<T: Sync> AsyncWaker<T> {
 }
 
 
-struct Waiter<'a, T: Sync> {
+struct Waiter<'a, T: Send> {
     wakeup: &'a AsyncWaker<T>,
 }
 
-impl<'a, T: Sync> Waiter<'a, T> {
+impl<'a, T: Send> Waiter<'a, T> {
     fn new(wakeup: &'a AsyncWaker<T>) -> Waiter<'a, T>
     {
         Waiter { wakeup }
@@ -47,7 +47,7 @@ impl<'a, T: Sync> Waiter<'a, T> {
 }
 
 
-impl<'a, T: Sync> future::Future for Waiter<'a, T> {
+impl<'a, T: Send> future::Future for Waiter<'a, T> {
     type Output = T;
 
     fn poll(self: pin::Pin<&mut Self>, context: &mut task::Context)
@@ -72,7 +72,7 @@ impl<'a, T: Sync> future::Future for Waiter<'a, T> {
     }
 }
 
-impl<T: Sync> AsyncWaker<T> {
+impl<T: Send> AsyncWaker<T> {
     pub async fn wait_for(&self) -> T
     {
         Waiter::new(self).await
