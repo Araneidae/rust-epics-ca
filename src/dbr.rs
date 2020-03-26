@@ -121,16 +121,24 @@ pub struct dbr_time_double {
 
 
 const DBR_STRING: c_short = 0;
+const DBR_TIME_STRING: c_short = 14;
 const DBR_SHORT:  c_short = 1;
+const DBR_TIME_SHORT:  c_short = 15;
 const DBR_FLOAT:  c_short = 2;
+const DBR_TIME_FLOAT:  c_short = 16;
 const DBR_ENUM:   c_short = 3;
+const DBR_TIME_ENUM:   c_short = 17;
 const DBR_CHAR:   c_short = 4;
+const DBR_TIME_CHAR:   c_short = 18;
 const DBR_LONG:   c_short = 5;
+const DBR_TIME_LONG:   c_short = 19;
 const DBR_DOUBLE: c_short = 6;
+const DBR_TIME_DOUBLE: c_short = 20;
 
 
 pub trait Adapter: Send + Sized {
     const DATATYPE: c_short;
+    const TIME_DATATYPE: c_short;
     type DbrType;
     type DbrTimeType;
     fn get_value(dbr: &Self::DbrType) -> Self;
@@ -140,6 +148,7 @@ pub trait Adapter: Send + Sized {
 
 impl Adapter for String {
     const DATATYPE: c_short = DBR_STRING;
+    const TIME_DATATYPE: c_short = DBR_TIME_STRING;
     type DbrType = dbr_string;
     type DbrTimeType = dbr_time_string;
 
@@ -163,9 +172,11 @@ impl Adapter for String {
 }
 
 macro_rules! scalar_adapter {
-    { $target:ident, $const:expr, $type:ty, $time_type:ty } => {
+    { $target:ident, $const:expr, $type:ty, $time_const:expr, $time_type:ty
+    } => {
         impl Adapter for $target {
             const DATATYPE: c_short = $const;
+            const TIME_DATATYPE: c_short = $time_const;
             type DbrType = $type;
             type DbrTimeType = $time_type;
 
@@ -173,6 +184,11 @@ macro_rules! scalar_adapter {
 
             fn get_value_time(dbr: &Self::DbrTimeType) -> (Self, CaStatusTime)
             {
+                let length = std::mem::size_of::<Self::DbrTimeType>();
+                let dbr_bytes: &[u8] = unsafe {
+                    std::slice::from_raw_parts(
+                        dbr as *const _ as *const u8, length) };
+                println!("dbr: {} {:02x?}", length, dbr_bytes);
                 (dbr.value, dbr.status_time)
             }
 
@@ -187,8 +203,8 @@ macro_rules! scalar_adapter {
     };
 }
 
-scalar_adapter!{u8,  DBR_CHAR,   dbr_char,   dbr_time_char}
-scalar_adapter!{i16, DBR_SHORT,  dbr_short,  dbr_time_short}
-scalar_adapter!{i32, DBR_LONG,   dbr_long,   dbr_time_long}
-scalar_adapter!{f32, DBR_FLOAT,  dbr_float,  dbr_time_float}
-scalar_adapter!{f64, DBR_DOUBLE, dbr_double, dbr_time_double}
+scalar_adapter!{u8,  DBR_CHAR,   dbr_char,   DBR_TIME_CHAR,   dbr_time_char}
+scalar_adapter!{i16, DBR_SHORT,  dbr_short,  DBR_TIME_SHORT,  dbr_time_short}
+scalar_adapter!{i32, DBR_LONG,   dbr_long,   DBR_TIME_LONG,   dbr_time_long}
+scalar_adapter!{f32, DBR_FLOAT,  dbr_float,  DBR_TIME_FLOAT,  dbr_time_float}
+scalar_adapter!{f64, DBR_DOUBLE, dbr_double, DBR_TIME_DOUBLE, dbr_time_double}

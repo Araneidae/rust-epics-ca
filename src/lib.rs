@@ -76,7 +76,7 @@ async fn do_caget_time<T>(pv: &str) -> (T, CaStatusTime)
 
     let caget_waker = callback::AsyncWaker::<(T, CaStatusTime)>::new();
     let rc = unsafe { cadef::ca_array_get_callback(
-        T::DATATYPE as libc::c_long, 1, channel.id,
+        T::TIME_DATATYPE as libc::c_long, 1, channel.id,
         caget_time_callback::<T>, ref_to_voidp(&caget_waker)) };
     assert!(rc == 1);
     unsafe { cadef::ca_flush_io() };

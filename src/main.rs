@@ -12,7 +12,7 @@ fn main()
         let result: i32 = CA::caget(pv).await;
         println!("Caget: {} => {}", pv, result);
         let result: String = CA::caget(pv).await;
-        println!("Caget: {} => {}", pv, result);
+        println!("Caget: {} => {:?}", pv, result);
         let result: Vec<f64> = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
         let result: (f64, CaStatusTime) = CA::caget(pv).await;
