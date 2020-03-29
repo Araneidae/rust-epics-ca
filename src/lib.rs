@@ -1,4 +1,5 @@
 mod cadef;
+mod db_access;
 mod dbr;
 
 mod channel;
@@ -7,7 +8,7 @@ mod callback;
 use async_trait::async_trait;
 use cadef::{voidp_to_ref, ref_to_voidp};
 
-pub use dbr::CaStatusTime;
+pub use db_access::CaStatusTime;    // Temporary until reimplemented
 
 
 trait GetResult<R: Send, E: Send, D: dbr::Dbr<R, E>>: Send {
@@ -48,7 +49,7 @@ async fn do_caget<R, E, D, T>(pv: &str) -> (T, E)
 
     let waker = callback::AsyncWaker::<(T, E)>::new();
     let rc = unsafe { cadef::ca_array_get_callback(
-        D::DATATYPE, T::COUNT, channel.id,
+        D::DATATYPE as i64, T::COUNT, channel.id,
         caget_callback::<R, E, D, T>, ref_to_voidp(&waker)) };
     assert!(rc == 1);
     unsafe { cadef::ca_flush_io() };
