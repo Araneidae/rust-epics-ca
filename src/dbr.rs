@@ -6,14 +6,14 @@ use libc::c_short;
 
 const MAX_STRING_SIZE: usize = 40;
 
-#[repr(C)]
+#[repr(C, packed)]
 #[derive(Clone, Copy, Debug)]
 pub struct EpicsTimeStamp {
     pub secs: u32,
     pub nsec: u32,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 #[derive(Clone, Copy, Debug)]
 pub struct CaStatusTime {
     pub status: i16,
@@ -44,12 +44,20 @@ fn from_epics_string(string: &EpicsString) -> String
     //  String::from_utf8_lossy(&dbr.value[..length]).into_owned()
 }
 
-#[repr(C)]
+#[allow(unused_unsafe)]
+unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Vec<T>
+{
+    let ptr = unsafe { array as *const T };
+    let slice = unsafe { std::slice::from_raw_parts(ptr, count) };
+    slice.to_vec()
+}
+
+#[repr(C, packed)]
 pub struct dbr_string {
     value: EpicsString,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_time_string {
     status_time: CaStatusTime,
     value: EpicsString,
@@ -57,12 +65,12 @@ pub struct dbr_time_string {
 
 // Integer types
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_char {
     value: u8,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_time_char {
     status_time: CaStatusTime,
     _padding0: u16,
@@ -70,24 +78,24 @@ pub struct dbr_time_char {
     value: u8,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_short {
     value: i16,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_time_short {
     status_time: CaStatusTime,
     _padding: u16,
     value: i16,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_long {
     value: i32,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_time_long {
     status_time: CaStatusTime,
     value: i32,
@@ -96,23 +104,23 @@ pub struct dbr_time_long {
 
 // Floating point types
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_float {
     value: f32,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_time_float {
     status_time: CaStatusTime,
     value: f32,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_double {
     value: f64,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct dbr_time_double {
     status_time: CaStatusTime,
     _padding: i32,
@@ -136,75 +144,93 @@ const DBR_DOUBLE: c_short = 6;
 const DBR_TIME_DOUBLE: c_short = 20;
 
 
-pub trait Adapter: Send + Sized {
-    const DATATYPE: c_short;
-    const TIME_DATATYPE: c_short;
-    type DbrType;
-    type DbrTimeType;
-    fn get_value(dbr: &Self::DbrType) -> Self;
-    fn get_value_vec(dbr: &Self::DbrType, count: usize) -> Vec<Self>;
-    fn get_value_time(dbr: &Self::DbrTimeType) -> (Self, CaStatusTime);
+
+pub trait Dbr<R: Send, E: Send> {
+    const DATATYPE: libc::c_long;
+    fn get_value(&self) -> R;
+    fn get_value_vec(&self, count: usize) -> Vec<R>;
+    fn get_extra(&self) -> E;
 }
 
-impl Adapter for String {
-    const DATATYPE: c_short = DBR_STRING;
-    const TIME_DATATYPE: c_short = DBR_TIME_STRING;
-    type DbrType = dbr_string;
-    type DbrTimeType = dbr_time_string;
-
-    fn get_value(dbr: &Self::DbrType) -> Self
-    {
-        from_epics_string(&dbr.value)
-    }
-
-    fn get_value_time(dbr: &Self::DbrTimeType) -> (Self, CaStatusTime)
-    {
-        (from_epics_string(&dbr.value), dbr.status_time)
-    }
-
-    fn get_value_vec(dbr: &Self::DbrType, count: usize) -> Vec<Self>
-    {
-        let slice = unsafe {
-            std::slice::from_raw_parts(
-                &dbr.value as *const EpicsString, count) };
-        slice.iter().map(from_epics_string).collect()
-    }
+pub trait DbrMap: Sized + Send {
+    type ValueDbr: Dbr<Self, ()>;
+    type TimeDbr: Dbr<Self, CaStatusTime>;
 }
 
-macro_rules! scalar_adapter {
-    { $target:ident, $const:expr, $type:ty, $time_const:expr, $time_type:ty
-    } => {
-        impl Adapter for $target {
-            const DATATYPE: c_short = $const;
-            const TIME_DATATYPE: c_short = $time_const;
-            type DbrType = $type;
-            type DbrTimeType = $time_type;
-
-            fn get_value(dbr: &Self::DbrType) -> Self { dbr.value }
-
-            fn get_value_time(dbr: &Self::DbrTimeType) -> (Self, CaStatusTime)
-            {
-                let length = std::mem::size_of::<Self::DbrTimeType>();
-                let dbr_bytes: &[u8] = unsafe {
-                    std::slice::from_raw_parts(
-                        dbr as *const _ as *const u8, length) };
-                println!("dbr: {} {:02x?}", length, dbr_bytes);
-                (dbr.value, dbr.status_time)
-            }
-
-            fn get_value_vec(dbr: &Self::DbrType, count: usize) -> Vec<Self> {
-                let slice = unsafe {
-                    std::slice::from_raw_parts(
-                        &dbr.value as *const Self, count) };
-                slice.to_vec()
-            }
-
+macro_rules! string_get_values {
+    {} => {
+        fn get_value(&self) -> String { from_epics_string(&self.value) }
+        fn get_value_vec(&self, count: usize) -> Vec<String>
+        {
+            let slice = unsafe {
+                std::slice::from_raw_parts(
+                    &self.value as *const EpicsString, count) };
+            slice.iter().map(from_epics_string).collect()
         }
-    };
+    }
 }
 
-scalar_adapter!{u8,  DBR_CHAR,   dbr_char,   DBR_TIME_CHAR,   dbr_time_char}
-scalar_adapter!{i16, DBR_SHORT,  dbr_short,  DBR_TIME_SHORT,  dbr_time_short}
-scalar_adapter!{i32, DBR_LONG,   dbr_long,   DBR_TIME_LONG,   dbr_time_long}
-scalar_adapter!{f32, DBR_FLOAT,  dbr_float,  DBR_TIME_FLOAT,  dbr_time_float}
-scalar_adapter!{f64, DBR_DOUBLE, dbr_double, DBR_TIME_DOUBLE, dbr_time_double}
+impl Dbr<String, ()> for dbr_string {
+    const DATATYPE: libc::c_long = DBR_STRING as libc::c_long;
+
+    string_get_values!{}
+
+    fn get_extra(&self) -> () { () }
+}
+
+impl Dbr<String, CaStatusTime> for dbr_time_string {
+    const DATATYPE: libc::c_long = DBR_TIME_STRING as libc::c_long;
+
+    string_get_values!{}
+
+    fn get_extra(&self) -> CaStatusTime { self.status_time }
+}
+
+impl DbrMap for String {
+    type ValueDbr = dbr_string;
+    type TimeDbr = dbr_time_string;
+}
+
+
+// -----------------------------------------------------------------------------
+// Scalar types
+
+macro_rules! scalar_dbr {
+    { $type:ty,
+        $value_const:expr, $value_dbr:ident, $time_const:expr, $time_dbr:ident
+    } => {
+        impl Dbr<$type, ()> for $value_dbr {
+            const DATATYPE: libc::c_long = $value_const as libc::c_long;
+
+            fn get_value(&self) -> $type { self.value }
+            fn get_value_vec(&self, count: usize) -> Vec<$type>
+            {
+                unsafe { c_array_to_vector(&self.value, count) }
+            }
+            fn get_extra(&self) -> () { () }
+        }
+
+        impl Dbr<$type, CaStatusTime> for $time_dbr {
+            const DATATYPE: libc::c_long = $time_const as libc::c_long;
+
+            fn get_value(&self) -> $type { self.value }
+            fn get_value_vec(&self, count: usize) -> Vec<$type>
+            {
+                unsafe { c_array_to_vector(&self.value, count) }
+            }
+            fn get_extra(&self) -> CaStatusTime { self.status_time }
+        }
+
+        impl DbrMap for $type {
+            type ValueDbr = $value_dbr;
+            type TimeDbr = $time_dbr;
+        }
+    }
+}
+
+
+scalar_dbr!{u8,  DBR_CHAR,   dbr_char,   DBR_TIME_CHAR,   dbr_time_char}
+scalar_dbr!{i16, DBR_SHORT,  dbr_short,  DBR_TIME_SHORT,  dbr_time_short}
+scalar_dbr!{i32, DBR_LONG,   dbr_long,   DBR_TIME_LONG,   dbr_time_long}
+scalar_dbr!{f32, DBR_FLOAT,  dbr_float,  DBR_TIME_FLOAT,  dbr_time_float}
+scalar_dbr!{f64, DBR_DOUBLE, dbr_double, DBR_TIME_DOUBLE, dbr_time_double}
