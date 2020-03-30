@@ -2,6 +2,7 @@
 
 use futures::executor::block_on;
 use epics_ca::*;
+use humantime::format_rfc3339;
 
 fn main()
 {
@@ -19,5 +20,6 @@ fn main()
         println!("Caget: {} => {:?}", pv, result);
         let result: (f64, StatusSeverity, SystemTime) = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
+        println!("Time: {}", format_rfc3339(result.2));
     });
 }
