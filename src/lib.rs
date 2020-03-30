@@ -23,7 +23,7 @@ impl<R, E, D> GetResult<R, E, D> for R
     fn get_result(dbr: &D, _count: usize) -> Self { dbr.get_value() }
 }
 
-impl<R, E, D> GetResult<R, E, D> for Vec<R>
+impl<R, E, D> GetResult<R, E, D> for Box<[R]>
     where R: dbr::DbrMap, E: Send, D: dbr::Dbr<R, E>
 {
     const COUNT: u64 = 0;
@@ -70,7 +70,7 @@ impl<T> CA for T where T: dbr::DbrMap {
 }
 
 #[async_trait(?Send)]
-impl<T> CA for Vec<T> where T: dbr::DbrMap {
+impl<T> CA for Box<[T]> where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
         do_caget::<_, _, T::ValueDbr, _>(pv).await.0
     }
@@ -84,7 +84,7 @@ impl<T> CA for (T, CaStatusTime) where T: dbr::DbrMap {
 }
 
 #[async_trait(?Send)]
-impl<T> CA for (Vec<T>, CaStatusTime) where T: dbr::DbrMap {
+impl<T> CA for (Box<[T]>, CaStatusTime) where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
         do_caget::<_, _, T::TimeDbr, _>(pv).await
     }

@@ -21,11 +21,11 @@ fn from_epics_string(string: &EpicsString) -> String
 }
 
 #[allow(unused_unsafe)]
-unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Vec<T>
+unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Box<[T]>
 {
     let ptr = unsafe { array as *const T };
     let slice = unsafe { std::slice::from_raw_parts(ptr, count) };
-    slice.to_vec()
+    slice.into()
 }
 
 
@@ -33,7 +33,7 @@ unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Vec<T>
 pub trait Dbr<R: Send, E: Send> {
     const DATATYPE: DbrTypeCode;
     fn get_value(&self) -> R;
-    fn get_value_vec(&self, count: usize) -> Vec<R>;
+    fn get_value_vec(&self, count: usize) -> Box<[R]>;
     fn get_extra(&self) -> E;
 }
 
@@ -45,7 +45,7 @@ pub trait DbrMap: Sized + Send {
 macro_rules! string_get_values {
     {} => {
         fn get_value(&self) -> String { from_epics_string(&self.value) }
-        fn get_value_vec(&self, count: usize) -> Vec<String>
+        fn get_value_vec(&self, count: usize) -> Box<[String]>
         {
             let slice = unsafe {
                 std::slice::from_raw_parts(
@@ -88,7 +88,7 @@ macro_rules! scalar_dbr {
             const DATATYPE: DbrTypeCode = $value_const;
 
             fn get_value(&self) -> $type { self.value }
-            fn get_value_vec(&self, count: usize) -> Vec<$type>
+            fn get_value_vec(&self, count: usize) -> Box<[$type]>
             {
                 unsafe { c_array_to_vector(&self.value, count) }
             }
@@ -99,7 +99,7 @@ macro_rules! scalar_dbr {
             const DATATYPE: DbrTypeCode = $time_const;
 
             fn get_value(&self) -> $type { self.value }
-            fn get_value_vec(&self, count: usize) -> Vec<$type>
+            fn get_value_vec(&self, count: usize) -> Box<[$type]>
             {
                 unsafe { c_array_to_vector(&self.value, count) }
             }
