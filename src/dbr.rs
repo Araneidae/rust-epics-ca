@@ -8,11 +8,11 @@ use crate::db_access;
 use db_access::*;
 
 
-fn from_epics_string(string: &EpicsString) -> String
+fn from_epics_string(string: &[u8]) -> String
 {
     // Extract either a null terminated string or the entire string if not
     // null terminated.
-    let string = string.0.split(|x| *x == 0).next().unwrap_or(&string.0);
+    let string = string.split(|x| *x == 0).next().unwrap_or(&string);
     // Convert into internal UTF8 string, with replacement characters where
     // required.
     String::from_utf8_lossy(string).into_owned()
@@ -44,6 +44,18 @@ fn from_raw_stamp(epics_time: &EpicsTimeStamp) -> SystemTime
 }
 
 
+fn dump_bytes<T: Sized>(value: &T)
+{
+    let length = std::mem::size_of::<T>();
+    let bytes: &[u8] = unsafe {
+        std::slice::from_raw_parts(value as *const _ as *const u8, length) };
+    println!("dump: {:02x?}", bytes);
+}
+
+
+// -----------------------------------------------------------------------------
+// Traits defining interface to the dbrs
+
 pub trait Dbr<R: Send, E: Send> {
     const DATATYPE: DbrTypeCode;
     fn get_value(&self) -> R;
@@ -54,17 +66,23 @@ pub trait Dbr<R: Send, E: Send> {
 pub trait DbrMap: Sized + Send {
     type ValueDbr: Dbr<Self, ()>;
     type TimeDbr: Dbr<Self, (StatusSeverity, SystemTime)>;
+    type CtrlType: Send;
+    type CtrlDbr: Dbr<Self, Self::CtrlType>;
 }
+
+
+// -----------------------------------------------------------------------------
+// String types
 
 macro_rules! string_get_values {
     {} => {
-        fn get_value(&self) -> String { from_epics_string(&self.value) }
+        fn get_value(&self) -> String { from_epics_string(&self.value.0) }
         fn get_value_vec(&self, count: usize) -> Box<[String]>
         {
             let slice = unsafe {
                 std::slice::from_raw_parts(
                     &self.value as *const EpicsString, count) };
-            slice.iter().map(from_epics_string).collect()
+            slice.iter().map(|s| from_epics_string(&s.0)).collect()
         }
     }
 }
@@ -90,6 +108,8 @@ impl Dbr<String, (StatusSeverity, SystemTime)> for dbr_time_string {
 impl DbrMap for String {
     type ValueDbr = dbr_string;
     type TimeDbr = dbr_time_string;
+    type CtrlType = ();
+    type CtrlDbr = dbr_string;
 }
 
 
@@ -98,7 +118,9 @@ impl DbrMap for String {
 
 macro_rules! scalar_dbr {
     { $type:ty,
-        $value_const:expr, $value_dbr:ident, $time_const:expr, $time_dbr:ident
+        $value_const:expr, $value_dbr:ident,
+        $time_const:expr, $time_dbr:ident,
+        $ctrl_const:expr, $ctrl_dbr:ident
     } => {
         impl Dbr<$type, ()> for $value_dbr {
             const DATATYPE: DbrTypeCode = $value_const;
@@ -124,17 +146,47 @@ macro_rules! scalar_dbr {
             }
         }
 
+        impl Dbr<$type, CtrlLimits<$type>> for $ctrl_dbr {
+            const DATATYPE: DbrTypeCode = $ctrl_const;
+
+            fn get_value(&self) -> $type { self.value }
+            fn get_value_vec(&self, count: usize) -> Box<[$type]>
+            {
+                unsafe { c_array_to_vector(&self.value, count) }
+            }
+            fn get_extra(&self) -> CtrlLimits<$type> {
+                self.ctrl_limits
+            }
+        }
+
         impl DbrMap for $type {
             type ValueDbr = $value_dbr;
             type TimeDbr = $time_dbr;
+            type CtrlType = CtrlLimits<$type>;
+            type CtrlDbr = $ctrl_dbr;
         }
     }
 }
 
 
 use DbrTypeCode::*;
-scalar_dbr!{u8,  DBR_CHAR,   dbr_char,   DBR_TIME_CHAR,   dbr_time_char}
-scalar_dbr!{i16, DBR_SHORT,  dbr_short,  DBR_TIME_SHORT,  dbr_time_short}
-scalar_dbr!{i32, DBR_LONG,   dbr_long,   DBR_TIME_LONG,   dbr_time_long}
-scalar_dbr!{f32, DBR_FLOAT,  dbr_float,  DBR_TIME_FLOAT,  dbr_time_float}
-scalar_dbr!{f64, DBR_DOUBLE, dbr_double, DBR_TIME_DOUBLE, dbr_time_double}
+scalar_dbr!{u8,
+    DBR_CHAR,           dbr_char,
+    DBR_TIME_CHAR,      dbr_time_char,
+    DBR_CTRL_CHAR,      dbr_ctrl_char}
+scalar_dbr!{i16,
+    DBR_SHORT,          dbr_short,
+    DBR_TIME_SHORT,     dbr_time_short,
+    DBR_CTRL_SHORT,     dbr_ctrl_short}
+scalar_dbr!{i32,
+    DBR_LONG,           dbr_long,
+    DBR_TIME_LONG,      dbr_time_long,
+    DBR_CTRL_LONG,      dbr_ctrl_long}
+scalar_dbr!{f32,
+    DBR_FLOAT,          dbr_float,
+    DBR_TIME_FLOAT,     dbr_time_float,
+    DBR_CTRL_FLOAT,     dbr_ctrl_float}
+scalar_dbr!{f64,
+    DBR_DOUBLE,         dbr_double,
+    DBR_TIME_DOUBLE,    dbr_time_double,
+    DBR_CTRL_DOUBLE,    dbr_ctrl_double}
