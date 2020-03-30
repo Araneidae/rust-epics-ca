@@ -13,10 +13,9 @@ pub struct EpicsTimeStamp {
 
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug)]
-pub struct CaStatusTime {
+pub struct StatusSeverity {
     pub status: i16,
     pub severity: i16,
-    pub raw_time: EpicsTimeStamp,
 }
 
 
@@ -35,7 +34,8 @@ pub struct dbr_string {
 
 #[repr(C, packed)]
 pub struct dbr_time_string {
-    pub status_time: CaStatusTime,
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
     pub value: EpicsString,
 }
 
@@ -48,7 +48,8 @@ pub struct dbr_char {
 
 #[repr(C, packed)]
 pub struct dbr_time_char {
-    pub status_time: CaStatusTime,
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
     _padding0: u16,
     _padding1: u8,
     pub value: u8,
@@ -61,7 +62,8 @@ pub struct dbr_short {
 
 #[repr(C, packed)]
 pub struct dbr_time_short {
-    pub status_time: CaStatusTime,
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
     _padding: u16,
     pub value: i16,
 }
@@ -73,7 +75,8 @@ pub struct dbr_long {
 
 #[repr(C, packed)]
 pub struct dbr_time_long {
-    pub status_time: CaStatusTime,
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
     pub value: i32,
 }
 
@@ -87,7 +90,8 @@ pub struct dbr_float {
 
 #[repr(C, packed)]
 pub struct dbr_time_float {
-    pub status_time: CaStatusTime,
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
     pub value: f32,
 }
 
@@ -98,7 +102,8 @@ pub struct dbr_double {
 
 #[repr(C, packed)]
 pub struct dbr_time_double {
-    pub status_time: CaStatusTime,
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
     _padding: i32,
     pub value: f64,
 }

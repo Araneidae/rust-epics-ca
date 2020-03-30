@@ -8,7 +8,8 @@ mod callback;
 use async_trait::async_trait;
 use cadef::{voidp_to_ref, ref_to_voidp};
 
-pub use db_access::CaStatusTime;    // Temporary until reimplemented
+pub use db_access::StatusSeverity;
+pub use std::time::SystemTime;
 
 
 trait GetResult<R: Send, E: Send, D: dbr::Dbr<R, E>>: Send {
@@ -77,15 +78,17 @@ impl<T> CA for Box<[T]> where T: dbr::DbrMap {
 }
 
 #[async_trait(?Send)]
-impl<T> CA for (T, CaStatusTime) where T: dbr::DbrMap {
+impl<T> CA for (T, StatusSeverity, SystemTime) where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
-        do_caget::<_, _, T::TimeDbr, _>(pv).await
+        let (v, (s, t)) = do_caget::<_, _, T::TimeDbr, _>(pv).await;
+        (v, s, t)
     }
 }
 
 #[async_trait(?Send)]
-impl<T> CA for (Box<[T]>, CaStatusTime) where T: dbr::DbrMap {
+impl<T> CA for (Box<[T]>, StatusSeverity, SystemTime) where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
-        do_caget::<_, _, T::TimeDbr, _>(pv).await
+        let (v, (s, t)) = do_caget::<_, _, T::TimeDbr, _>(pv).await;
+        (v, s, t)
     }
 }

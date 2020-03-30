@@ -2,6 +2,8 @@
 //
 // These are all as defined in db_access.h in EPICS base
 
+use std::time::*;
+
 use crate::db_access;
 use db_access::*;
 
@@ -29,6 +31,18 @@ unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Box<[T]>
 }
 
 
+// The EPICS Epoch is based on 1st January 1990, and we want to convert all our
+// timestamps to the UNIX_EPOCH of 1st January 1970 to create SystemTime
+// instances.
+const EPICS_EPOCH_SECS: u64 = 631152000;    // Seconds from 1970 to 1990
+
+fn from_raw_stamp(epics_time: &EpicsTimeStamp) -> SystemTime
+{
+    let duration = Duration::new(epics_time.secs as u64, epics_time.nsec);
+    let epics_epoch = Duration::new(EPICS_EPOCH_SECS, 0);
+    UNIX_EPOCH.checked_add(epics_epoch).unwrap().checked_add(duration).unwrap()
+}
+
 
 pub trait Dbr<R: Send, E: Send> {
     const DATATYPE: DbrTypeCode;
@@ -39,7 +53,7 @@ pub trait Dbr<R: Send, E: Send> {
 
 pub trait DbrMap: Sized + Send {
     type ValueDbr: Dbr<Self, ()>;
-    type TimeDbr: Dbr<Self, CaStatusTime>;
+    type TimeDbr: Dbr<Self, (StatusSeverity, SystemTime)>;
 }
 
 macro_rules! string_get_values {
@@ -63,12 +77,14 @@ impl Dbr<String, ()> for dbr_string {
     fn get_extra(&self) -> () { () }
 }
 
-impl Dbr<String, CaStatusTime> for dbr_time_string {
+impl Dbr<String, (StatusSeverity, SystemTime)> for dbr_time_string {
     const DATATYPE: DbrTypeCode = DbrTypeCode::DBR_TIME_STRING;
 
     string_get_values!{}
 
-    fn get_extra(&self) -> CaStatusTime { self.status_time }
+    fn get_extra(&self) -> (StatusSeverity, SystemTime) {
+        (self.status_severity, from_raw_stamp(&self.raw_time))
+    }
 }
 
 impl DbrMap for String {
@@ -95,7 +111,7 @@ macro_rules! scalar_dbr {
             fn get_extra(&self) -> () { () }
         }
 
-        impl Dbr<$type, CaStatusTime> for $time_dbr {
+        impl Dbr<$type, (StatusSeverity, SystemTime)> for $time_dbr {
             const DATATYPE: DbrTypeCode = $time_const;
 
             fn get_value(&self) -> $type { self.value }
@@ -103,7 +119,9 @@ macro_rules! scalar_dbr {
             {
                 unsafe { c_array_to_vector(&self.value, count) }
             }
-            fn get_extra(&self) -> CaStatusTime { self.status_time }
+            fn get_extra(&self) -> (StatusSeverity, SystemTime) {
+                (self.status_severity, from_raw_stamp(&self.raw_time))
+            }
         }
 
         impl DbrMap for $type {

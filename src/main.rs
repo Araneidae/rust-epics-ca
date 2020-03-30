@@ -17,7 +17,7 @@ fn main()
         println!("Caget: {} => {:?}", pv, result);
         let result: Box<[f64]> = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
-        let result: (f64, CaStatusTime) = CA::caget(pv).await;
+        let result: (f64, StatusSeverity, SystemTime) = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
     });
 }
