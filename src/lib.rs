@@ -13,6 +13,12 @@ pub use db_access::StatusSeverity;
 pub use db_access::CtrlLimits;
 
 
+// Overloaded trait for returning the underlying Dbr value using one of the two
+// Dbr readout methods: get_value or get_value_vec.
+//
+// Here R is the underlying datatype associated with the Dbr D, and E is the
+// extra (timestamp+severity or control) data for the Dbr.  The implementing
+// datatype Self will be either R or Vec<R>.
 trait GetResult<R: Send, E: Send, D: dbr::Dbr<R, E>>: Send {
     const COUNT: u64;
     fn get_result(dbr: &D, count: usize) -> Self;
@@ -34,6 +40,14 @@ impl<R, E, D> GetResult<R, E, D> for Box<[R]>
 
 
 
+// Asynchronous callback invoked in response to ca_array_get_callback.  The four
+// type parameters are as follows:
+//
+//  R: underlying datatype associated with Dbr provided by this callback
+//  E: extra fields (timestamp, severity, contrl) associated with Dbr
+//  D: the Dbr type itself, implementing Dbr<R, E>
+//  T: the actual type we're going to return, supported by GetResult<R, E, D>.
+//     In practice, this type is either R or Vec<R>.
 extern fn caget_callback<R, E, D, T>(args: cadef::event_handler_args)
     where R: Send, E: Send, D: dbr::Dbr<R, E>, T: GetResult<R, E, D>
 {
@@ -59,10 +73,18 @@ async fn do_caget<R, E, D, T>(pv: &str) -> (T, E)
 }
 
 
+// -----------------------------------------------------------------------------
+// caget
+
+// This is the overloaded trait used to implement caget.  We have six separate
+// implementations for each of the available datatypes.
 #[async_trait(?Send)]
 pub trait CA {
     async fn caget(pv: &str) -> Self;
 }
+
+
+// caget of undecorated value, either as scalar or vector
 
 #[async_trait(?Send)]
 impl<T> CA for T where T: dbr::DbrMap {
@@ -77,6 +99,9 @@ impl<T> CA for Box<[T]> where T: dbr::DbrMap {
         do_caget::<_, _, T::ValueDbr, _>(pv).await.0
     }
 }
+
+
+// caget with severity and timestamp
 
 #[async_trait(?Send)]
 impl<T> CA for (T, StatusSeverity, SystemTime) where T: dbr::DbrMap {
@@ -93,6 +118,9 @@ impl<T> CA for (Box<[T]>, StatusSeverity, SystemTime) where T: dbr::DbrMap {
         (v, s, t)
     }
 }
+
+
+// caget with control field information
 
 #[async_trait(?Send)]
 impl<T> CA for (T, T::CtrlType) where T: dbr::DbrMap {

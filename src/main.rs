@@ -18,18 +18,20 @@ fn main()
         println!("Caget: {} => {:?}", pv, result);
         let result: Box<[f64]> = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
-        let result: (f64, StatusSeverity, SystemTime) = CA::caget(pv).await;
-        println!("Caget: {} => {:?} {}", pv, result, format_rfc3339(result.2));
+
+        let (result, status, time): (f64, _, _) = CA::caget(pv).await;
+        println!("Caget: {} => {}\n {:#?} {}", pv,
+            result, status, format_rfc3339(time));
 
         let result: (f64, CtrlLimits<f64>) = CA::caget(pv).await;
-        println!("Caget: {} => {:?}", pv, result);
+        println!("Caget: {} => {:#?}", pv, result);
         let result: (f32, CtrlLimits<f32>) = CA::caget(pv).await;
-        println!("Caget: {} => {:?}", pv, result);
+        println!("Caget: {} => {:#?}", pv, result);
         let result: (i32, CtrlLimits<i32>) = CA::caget(pv).await;
-        println!("Caget: {} => {:?}", pv, result);
+        println!("Caget: {} => {:#?}", pv, result);
         let result: (i16, CtrlLimits<i16>) = CA::caget(pv).await;
-        println!("Caget: {} => {:?}", pv, result);
+        println!("Caget: {} => {:#?}", pv, result);
         let result: (u8, CtrlLimits<u8>) = CA::caget(pv).await;
-        println!("Caget: {} => {:?}", pv, result);
+        println!("Caget: {} => {:#?}", pv, result);
     });
 }
