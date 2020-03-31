@@ -56,18 +56,20 @@ fn dump_bytes<T: Sized>(value: &T)
 // -----------------------------------------------------------------------------
 // Traits defining interface to the dbrs
 
-pub trait Dbr<R: Send, E: Send> {
+pub trait Dbr {
     const DATATYPE: DbrTypeCode;
-    fn get_value(&self) -> R;
-    fn get_value_vec(&self, count: usize) -> Box<[R]>;
-    fn get_extra(&self) -> E;
+    type ResultType: Send;
+    type ExtraType: Send;
+    fn get_value(&self) -> Self::ResultType;
+    fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>;
+    fn get_extra(&self) -> Self::ExtraType;
 }
 
 pub trait DbrMap: Sized + Send {
-    type ValueDbr: Dbr<Self, ()>;
-    type TimeDbr: Dbr<Self, (StatusSeverity, SystemTime)>;
+    type ValueDbr: Dbr<ResultType=Self, ExtraType=()>;
+    type TimeDbr: Dbr<ResultType=Self, ExtraType=(StatusSeverity, SystemTime)>;
     type CtrlType: Send;
-    type CtrlDbr: Dbr<Self, Self::CtrlType>;
+    type CtrlDbr: Dbr<ResultType=Self, ExtraType=Self::CtrlType>;
 }
 
 
@@ -76,8 +78,10 @@ pub trait DbrMap: Sized + Send {
 
 macro_rules! string_get_values {
     {} => {
-        fn get_value(&self) -> String { from_epics_string(&self.value.0) }
-        fn get_value_vec(&self, count: usize) -> Box<[String]>
+        fn get_value(&self) -> Self::ResultType {
+            from_epics_string(&self.value.0)
+        }
+        fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>
         {
             let slice = unsafe {
                 std::slice::from_raw_parts(
@@ -87,20 +91,24 @@ macro_rules! string_get_values {
     }
 }
 
-impl Dbr<String, ()> for dbr_string {
+impl Dbr for dbr_string {
     const DATATYPE: DbrTypeCode = DbrTypeCode::DBR_STRING;
+    type ResultType = String;
+    type ExtraType = ();
 
     string_get_values!{}
 
-    fn get_extra(&self) -> () { () }
+    fn get_extra(&self) -> Self::ExtraType { () }
 }
 
-impl Dbr<String, (StatusSeverity, SystemTime)> for dbr_time_string {
+impl Dbr for dbr_time_string {
     const DATATYPE: DbrTypeCode = DbrTypeCode::DBR_TIME_STRING;
+    type ResultType = String;
+    type ExtraType = (StatusSeverity, SystemTime);
 
     string_get_values!{}
 
-    fn get_extra(&self) -> (StatusSeverity, SystemTime) {
+    fn get_extra(&self) -> Self::ExtraType {
         (self.status_severity, from_raw_stamp(&self.raw_time))
     }
 }
@@ -116,45 +124,52 @@ impl DbrMap for String {
 // -----------------------------------------------------------------------------
 // Scalar types
 
+macro_rules! scalar_get_values {
+    {} => {
+        fn get_value(&self) -> Self::ResultType { self.value }
+        fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>
+        {
+            unsafe { c_array_to_vector(&self.value, count) }
+        }
+    }
+}
+
 macro_rules! scalar_dbr {
     { $type:ty,
         $value_const:expr, $value_dbr:ident,
         $time_const:expr, $time_dbr:ident,
         $ctrl_const:expr, $ctrl_dbr:ident
     } => {
-        impl Dbr<$type, ()> for $value_dbr {
+        impl Dbr for $value_dbr {
             const DATATYPE: DbrTypeCode = $value_const;
+            type ResultType = $type;
+            type ExtraType = ();
 
-            fn get_value(&self) -> $type { self.value }
-            fn get_value_vec(&self, count: usize) -> Box<[$type]>
-            {
-                unsafe { c_array_to_vector(&self.value, count) }
-            }
-            fn get_extra(&self) -> () { () }
+            scalar_get_values!{}
+
+            fn get_extra(&self) -> Self::ExtraType { () }
         }
 
-        impl Dbr<$type, (StatusSeverity, SystemTime)> for $time_dbr {
+        impl Dbr for $time_dbr {
             const DATATYPE: DbrTypeCode = $time_const;
+            type ResultType = $type;
+            type ExtraType = (StatusSeverity, SystemTime);
 
-            fn get_value(&self) -> $type { self.value }
-            fn get_value_vec(&self, count: usize) -> Box<[$type]>
-            {
-                unsafe { c_array_to_vector(&self.value, count) }
-            }
-            fn get_extra(&self) -> (StatusSeverity, SystemTime) {
+            scalar_get_values!{}
+
+            fn get_extra(&self) -> Self::ExtraType {
                 (self.status_severity, from_raw_stamp(&self.raw_time))
             }
         }
 
-        impl Dbr<$type, CtrlLimits<$type>> for $ctrl_dbr {
+        impl Dbr for $ctrl_dbr {
             const DATATYPE: DbrTypeCode = $ctrl_const;
+            type ResultType = $type;
+            type ExtraType = CtrlLimits<$type>;
 
-            fn get_value(&self) -> $type { self.value }
-            fn get_value_vec(&self, count: usize) -> Box<[$type]>
-            {
-                unsafe { c_array_to_vector(&self.value, count) }
-            }
-            fn get_extra(&self) -> CtrlLimits<$type> {
+            scalar_get_values!{}
+
+            fn get_extra(&self) -> Self::ExtraType {
                 self.ctrl_limits
             }
         }
