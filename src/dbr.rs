@@ -135,10 +135,10 @@ pub struct CaEnum(pub u16);
 macro_rules! enum_get_values {
     {} => {
         fn get_value(&self) -> Self::ResultType { CaEnum(self.value) }
-        fn get_value_vec(&self, _count: usize) -> Box<[Self::ResultType]>
+        fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>
         {
-            unimplemented!()
-//             unsafe { c_array_to_vector(&self.value, count) }
+            let values = unsafe { c_array_to_vector(&self.value, count) };
+            values.iter().map(|&x| CaEnum(x)).collect()
         }
     }
 }
@@ -168,19 +168,22 @@ impl Dbr for dbr_time_enum {
 impl Dbr for dbr_ctrl_enum {
     const DATATYPE: DbrTypeCode = DBR_CTRL_ENUM;
     type ResultType = CaEnum;
-    type ExtraType = (StatusSeverity, ());
+    type ExtraType = (StatusSeverity, Box<[String]>);
 
     enum_get_values!{}
 
     fn get_extra(&self) -> Self::ExtraType {
-        (self.status_severity, ())
+        let enums = self.strings
+            .iter().take(self.enum_count as usize)
+            .map(|s| from_epics_string(s)).collect();
+        (self.status_severity, enums)
     }
 }
 
 impl DbrMap for CaEnum {
     type ValueDbr = dbr_enum;
     type TimeDbr = dbr_time_enum;
-    type CtrlType = ();
+    type CtrlType = Box<[String]>;
     type CtrlDbr = dbr_ctrl_enum;
 }
 
