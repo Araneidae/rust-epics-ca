@@ -26,15 +26,15 @@ fn main()
         println!("Caget: {} => {}\n {:#?} {}", pv,
             result, status, format_rfc3339(time));
 
-        let result: (f64, _) = CA::caget(pv).await;
+        let result: (f64, _, CaCtrl<_>) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (f32, _) = CA::caget(pv).await;
+        let result: (f32, _, CaCtrl<_>) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (i32, _) = CA::caget(pv).await;
+        let result: (i32, _, CaCtrl<_>) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (i16, _) = CA::caget(pv).await;
+        let result: (i16, _, CaCtrl<_>) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (u8, _) = CA::caget(pv).await;
+        let result: (u8, _, CaCtrl<_>) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
     });
 }

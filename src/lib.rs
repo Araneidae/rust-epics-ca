@@ -122,16 +122,23 @@ impl<T> CA for (Box<[T]>, StatusSeverity, SystemTime) where T: dbr::DbrMap {
 
 // caget with control field information
 
+#[derive(Clone, Copy, Debug)]
+pub struct CaCtrl<T>(pub T);
+
 #[async_trait(?Send)]
-impl<T> CA for (T, (StatusSeverity, T::CtrlType)) where T: dbr::DbrMap {
+impl<T> CA for (T, StatusSeverity, CaCtrl<T::CtrlType>) where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
-        do_caget::<T::CtrlDbr, _>(pv).await
+        let (v, (s, c)) = do_caget::<T::CtrlDbr, _>(pv).await;
+        (v, s, CaCtrl(c))
     }
 }
 
 #[async_trait(?Send)]
-impl<T> CA for (Box<[T]>, (StatusSeverity, T::CtrlType)) where T: dbr::DbrMap {
+impl<T> CA for (Box<[T]>, StatusSeverity, CaCtrl<T::CtrlType>)
+    where T: dbr::DbrMap
+{
     async fn caget(pv: &str) -> Self {
-        do_caget::<T::CtrlDbr, _>(pv).await
+        let (v, (s, c)) = do_caget::<T::CtrlDbr, _>(pv).await;
+        (v, s, CaCtrl(c))
     }
 }
