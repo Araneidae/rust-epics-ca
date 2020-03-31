@@ -8,6 +8,7 @@ fn main()
 {
     block_on(async {
         let pv = "SR-DI-DCCT-01:SIGNAL";
+
         let result: f64 = CA::caget(pv).await;
         println!("Caget: {} => {}", pv, result);
         let result: i32 = CA::caget(pv).await;
@@ -18,20 +19,24 @@ fn main()
         println!("Caget: {} => {:?}", pv, result);
         let result: Box<[f64]> = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
+        let result: CaEnum = CA::caget(pv).await;
+        println!("Caget: {} => {:?}", pv, result);
 
-        let (result, status, time): (f64, _, _) = CA::caget(pv).await;
+        let (result, status, time): (f64, _, SystemTime) = CA::caget(pv).await;
         println!("Caget: {} => {}\n {:#?} {}", pv,
             result, status, format_rfc3339(time));
 
-        let result: (f64, CtrlLimits<f64>) = CA::caget(pv).await;
+        let result: (f64, _) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (f32, CtrlLimits<f32>) = CA::caget(pv).await;
+        let result: (f32, _) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (i32, CtrlLimits<i32>) = CA::caget(pv).await;
+        let result: (i32, _) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (i16, CtrlLimits<i16>) = CA::caget(pv).await;
+        let result: (i16, _) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
-        let result: (u8, CtrlLimits<u8>) = CA::caget(pv).await;
+        let result: (u8, _) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
     });
 }
+
+// Try: unions, and async gather

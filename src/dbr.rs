@@ -44,12 +44,14 @@ fn from_raw_stamp(epics_time: &EpicsTimeStamp) -> SystemTime
 }
 
 
-fn dump_bytes<T: Sized>(value: &T)
+#[allow(dead_code)]
+fn get_raw_bytes<T: Sized>(value: &T) -> &[u8]
 {
     let length = std::mem::size_of::<T>();
     let bytes: &[u8] = unsafe {
         std::slice::from_raw_parts(value as *const _ as *const u8, length) };
-    println!("dump: {:02x?}", bytes);
+    bytes
+//     println!("dump: {:02x?}", bytes);
 }
 
 
@@ -69,7 +71,8 @@ pub trait DbrMap: Sized + Send {
     type ValueDbr: Dbr<ResultType=Self, ExtraType=()>;
     type TimeDbr: Dbr<ResultType=Self, ExtraType=(StatusSeverity, SystemTime)>;
     type CtrlType: Send;
-    type CtrlDbr: Dbr<ResultType=Self, ExtraType=Self::CtrlType>;
+    type CtrlDbr: Dbr<
+        ResultType=Self, ExtraType=(StatusSeverity, Self::CtrlType)>;
 }
 
 
@@ -113,13 +116,73 @@ impl Dbr for dbr_time_string {
     }
 }
 
+
 impl DbrMap for String {
     type ValueDbr = dbr_string;
     type TimeDbr = dbr_time_string;
-    type CtrlType = ();
-    type CtrlDbr = dbr_string;
+    type CtrlType = SystemTime;
+    type CtrlDbr = dbr_time_string;
 }
 
+
+// -----------------------------------------------------------------------------
+// Enum type
+
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct CaEnum(pub u16);
+
+macro_rules! enum_get_values {
+    {} => {
+        fn get_value(&self) -> Self::ResultType { CaEnum(self.value) }
+        fn get_value_vec(&self, _count: usize) -> Box<[Self::ResultType]>
+        {
+            unimplemented!()
+//             unsafe { c_array_to_vector(&self.value, count) }
+        }
+    }
+}
+
+impl Dbr for dbr_enum {
+    const DATATYPE: DbrTypeCode = DBR_ENUM;
+    type ResultType = CaEnum;
+    type ExtraType = ();
+
+    enum_get_values!{}
+
+    fn get_extra(&self) -> Self::ExtraType { () }
+}
+
+impl Dbr for dbr_time_enum {
+    const DATATYPE: DbrTypeCode = DBR_TIME_ENUM;
+    type ResultType = CaEnum;
+    type ExtraType = (StatusSeverity, SystemTime);
+
+    enum_get_values!{}
+
+    fn get_extra(&self) -> Self::ExtraType {
+        (self.status_severity, from_raw_stamp(&self.raw_time))
+    }
+}
+
+impl Dbr for dbr_ctrl_enum {
+    const DATATYPE: DbrTypeCode = DBR_CTRL_ENUM;
+    type ResultType = CaEnum;
+    type ExtraType = (StatusSeverity, ());
+
+    enum_get_values!{}
+
+    fn get_extra(&self) -> Self::ExtraType {
+        (self.status_severity, ())
+    }
+}
+
+impl DbrMap for CaEnum {
+    type ValueDbr = dbr_enum;
+    type TimeDbr = dbr_time_enum;
+    type CtrlType = ();
+    type CtrlDbr = dbr_ctrl_enum;
+}
 
 // -----------------------------------------------------------------------------
 // Scalar types
@@ -165,12 +228,12 @@ macro_rules! scalar_dbr {
         impl Dbr for $ctrl_dbr {
             const DATATYPE: DbrTypeCode = $ctrl_const;
             type ResultType = $type;
-            type ExtraType = CtrlLimits<$type>;
+            type ExtraType = (StatusSeverity, CtrlLimits<$type>);
 
             scalar_get_values!{}
 
             fn get_extra(&self) -> Self::ExtraType {
-                self.ctrl_limits
+                (self.status_severity, self.ctrl_limits)
             }
         }
 

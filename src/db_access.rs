@@ -4,9 +4,11 @@
 
 const MAX_STRING_SIZE: usize = 40;
 const MAX_UNITS_SIZE: usize = 8;
+const MAX_ENUM_STRING_SIZE: usize = 26;
+const MAX_ENUM_STATES: usize = 16;
+
 
 #[repr(C, packed)]
-#[derive(Clone, Copy, Debug)]
 pub struct EpicsTimeStamp {
     pub secs: u32,
     pub nsec: u32,
@@ -54,6 +56,30 @@ pub struct dbr_time_string {
 }
 
 
+// Enum type
+
+#[repr(C, packed)]
+pub struct dbr_enum {
+    pub value: u16,
+}
+
+#[repr(C, packed)]
+pub struct dbr_time_enum {
+    pub status_severity: StatusSeverity,
+    pub raw_time: EpicsTimeStamp,
+    _padding: u16,
+    pub value: u16,
+}
+
+#[repr(C, packed)]
+pub struct dbr_ctrl_enum {
+    pub status_severity: StatusSeverity,
+    pub enum_count: i16,
+    pub strings: [[u8; MAX_ENUM_STRING_SIZE]; MAX_ENUM_STATES],
+    pub value: u16,
+}
+
+
 // Integer types
 
 #[repr(C, packed)]
@@ -94,7 +120,7 @@ pub struct dbr_time_short {
 
 #[repr(C, packed)]
 pub struct dbr_ctrl_short {
-    pub status: StatusSeverity,
+    pub status_severity: StatusSeverity,
     pub ctrl_limits: CtrlLimits<i16>,
     pub value: i16,
 }

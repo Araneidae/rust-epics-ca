@@ -11,6 +11,7 @@ use cadef::{voidp_to_ref, ref_to_voidp};
 pub use std::time::SystemTime;
 pub use db_access::StatusSeverity;
 pub use db_access::CtrlLimits;
+pub use dbr::{CaEnum};
 
 
 // Overloaded trait for returning the underlying Dbr value using one of the two
@@ -23,6 +24,7 @@ trait GetResult<D: dbr::Dbr>: Send {
     const COUNT: u64;
     fn get_result(dbr: &D, count: usize) -> Self;
 }
+
 
 impl<R, D> GetResult<D> for R
     where R: dbr::DbrMap, D: dbr::Dbr<ResultType=R>
@@ -40,14 +42,12 @@ impl<R, D> GetResult<D> for Box<[R]>
 
 
 
-// Asynchronous callback invoked in response to ca_array_get_callback.  The four
+// Asynchronous callback invoked in response to ca_array_get_callback.  The two
 // type parameters are as follows:
 //
-//  R: underlying datatype associated with Dbr provided by this callback
-//  E: extra fields (timestamp, severity, contrl) associated with Dbr
-//  D: the Dbr type itself, implementing Dbr<R, E>
-//  T: the actual type we're going to return, supported by GetResult<R, E, D>.
-//     In practice, this type is either R or Vec<R>.
+//  D: the Dbr type for the returned data
+//  T: the actual type we're going to return, supported by GetResult<D>.
+//     In practice, this type is either D::ResultType or Vec<D::ResultType>.
 extern fn caget_callback<D, T>(args: cadef::event_handler_args)
     where D: dbr::Dbr, T: GetResult<D>
 {
@@ -123,14 +123,14 @@ impl<T> CA for (Box<[T]>, StatusSeverity, SystemTime) where T: dbr::DbrMap {
 // caget with control field information
 
 #[async_trait(?Send)]
-impl<T> CA for (T, T::CtrlType) where T: dbr::DbrMap {
+impl<T> CA for (T, (StatusSeverity, T::CtrlType)) where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
         do_caget::<T::CtrlDbr, _>(pv).await
     }
 }
 
 #[async_trait(?Send)]
-impl<T> CA for (Box<[T]>, T::CtrlType) where T: dbr::DbrMap {
+impl<T> CA for (Box<[T]>, (StatusSeverity, T::CtrlType)) where T: dbr::DbrMap {
     async fn caget(pv: &str) -> Self {
         do_caget::<T::CtrlDbr, _>(pv).await
     }
