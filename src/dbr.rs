@@ -187,8 +187,23 @@ impl DbrMap for CaEnum {
     type CtrlDbr = dbr_ctrl_enum;
 }
 
+
 // -----------------------------------------------------------------------------
 // Scalar types
+
+#[derive(Debug)]
+pub struct FixedCtrl<T: Copy + Send> {
+    pub units: String,
+    pub limits: CtrlLimits<T>,
+}
+
+#[derive(Debug)]
+pub struct FloatCtrl<T: Copy + Send> {
+    pub units: String,
+    pub precision: i16,
+    pub limits: CtrlLimits<T>,
+}
+
 
 macro_rules! scalar_get_values {
     {} => {
@@ -200,11 +215,30 @@ macro_rules! scalar_get_values {
     }
 }
 
+macro_rules! fixed_limits {
+    ($self:ident) => {
+        FixedCtrl {
+            units: from_epics_string(&$self.units),
+            limits: $self.ctrl_limits,
+        }
+    }
+}
+macro_rules! float_limits {
+    ($self:ident) => {
+        FloatCtrl {
+            units: from_epics_string(&$self.units),
+            precision: $self.precision,
+            limits: $self.ctrl_limits,
+        }
+    }
+}
+
 macro_rules! scalar_dbr {
     { $type:ty,
         $value_const:expr, $value_dbr:ident,
         $time_const:expr, $time_dbr:ident,
-        $ctrl_const:expr, $ctrl_dbr:ident
+        $ctrl_const:expr, $ctrl_dbr:ident,
+        $ctrl_type:tt, $ctrl_eval:ident
     } => {
         impl Dbr for $value_dbr {
             const DATATYPE: DbrTypeCode = $value_const;
@@ -231,19 +265,19 @@ macro_rules! scalar_dbr {
         impl Dbr for $ctrl_dbr {
             const DATATYPE: DbrTypeCode = $ctrl_const;
             type ResultType = $type;
-            type ExtraType = (StatusSeverity, CtrlLimits<$type>);
+            type ExtraType = (StatusSeverity, $ctrl_type<$type>);
 
             scalar_get_values!{}
 
             fn get_extra(&self) -> Self::ExtraType {
-                (self.status_severity, self.ctrl_limits)
+                (self.status_severity, $ctrl_eval!(self))
             }
         }
 
         impl DbrMap for $type {
             type ValueDbr = $value_dbr;
             type TimeDbr = $time_dbr;
-            type CtrlType = CtrlLimits<$type>;
+            type CtrlType = $ctrl_type<$type>;
             type CtrlDbr = $ctrl_dbr;
         }
     }
@@ -254,20 +288,20 @@ use DbrTypeCode::*;
 scalar_dbr!{u8,
     DBR_CHAR,           dbr_char,
     DBR_TIME_CHAR,      dbr_time_char,
-    DBR_CTRL_CHAR,      dbr_ctrl_char}
+    DBR_CTRL_CHAR,      dbr_ctrl_char,      FixedCtrl, fixed_limits }
 scalar_dbr!{i16,
     DBR_SHORT,          dbr_short,
     DBR_TIME_SHORT,     dbr_time_short,
-    DBR_CTRL_SHORT,     dbr_ctrl_short}
+    DBR_CTRL_SHORT,     dbr_ctrl_short,     FixedCtrl, fixed_limits }
 scalar_dbr!{i32,
     DBR_LONG,           dbr_long,
     DBR_TIME_LONG,      dbr_time_long,
-    DBR_CTRL_LONG,      dbr_ctrl_long}
+    DBR_CTRL_LONG,      dbr_ctrl_long,      FixedCtrl, fixed_limits }
 scalar_dbr!{f32,
     DBR_FLOAT,          dbr_float,
     DBR_TIME_FLOAT,     dbr_time_float,
-    DBR_CTRL_FLOAT,     dbr_ctrl_float}
+    DBR_CTRL_FLOAT,     dbr_ctrl_float,     FloatCtrl, float_limits }
 scalar_dbr!{f64,
     DBR_DOUBLE,         dbr_double,
     DBR_TIME_DOUBLE,    dbr_time_double,
-    DBR_CTRL_DOUBLE,    dbr_ctrl_double}
+    DBR_CTRL_DOUBLE,    dbr_ctrl_double,    FloatCtrl, float_limits }

@@ -24,7 +24,6 @@ pub struct StatusSeverity {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct CtrlLimits<T: Copy + Send> {
-    pub units:                [u8; MAX_UNITS_SIZE],
     pub upper_disp_limit:     T,
     pub lower_disp_limit:     T,
     pub upper_alarm_limit:    T,
@@ -99,6 +98,7 @@ pub struct dbr_time_char {
 #[repr(C, packed)]
 pub struct dbr_ctrl_char {
     pub status_severity: StatusSeverity,
+    pub units: [u8; MAX_UNITS_SIZE],
     pub ctrl_limits: CtrlLimits<u8>,
     _padding1: u8,
     pub value: u8,
@@ -121,6 +121,7 @@ pub struct dbr_time_short {
 #[repr(C, packed)]
 pub struct dbr_ctrl_short {
     pub status_severity: StatusSeverity,
+    pub units: [u8; MAX_UNITS_SIZE],
     pub ctrl_limits: CtrlLimits<i16>,
     pub value: i16,
 }
@@ -141,6 +142,7 @@ pub struct dbr_time_long {
 #[repr(C, packed)]
 pub struct dbr_ctrl_long {
     pub status_severity: StatusSeverity,
+    pub units: [u8; MAX_UNITS_SIZE],
     pub ctrl_limits: CtrlLimits<i32>,
     pub value: i32,
 }
@@ -165,6 +167,7 @@ pub struct dbr_ctrl_float {
     pub status_severity: StatusSeverity,
     pub precision: i16,
     _padding: i16,
+    pub units: [u8; MAX_UNITS_SIZE],
     pub ctrl_limits: CtrlLimits<f32>,
     pub value: f32,
 }
@@ -188,6 +191,7 @@ pub struct dbr_ctrl_double {
     pub status_severity: StatusSeverity,
     pub precision: i16,
     _padding: i16,
+    pub units: [u8; MAX_UNITS_SIZE],
     pub ctrl_limits: CtrlLimits<f64>,
     pub value: f64,
 }
