@@ -15,9 +15,9 @@ fn main()
         println!("Caget: {} => {}", pv, result);
         let result: String = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
-        let result: Box<[String]> = CA::caget(pv).await;
+        let result: Vec<String> = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
-        let result: Box<[f64]> = CA::caget(pv).await;
+        let result: Vec<f64> = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);
         let result: CaEnum = CA::caget(pv).await;
         println!("Caget: {} => {:?}", pv, result);

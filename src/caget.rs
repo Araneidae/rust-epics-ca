@@ -31,7 +31,7 @@ impl<R, D> GetResult<D> for R
     fn get_result(dbr: &D, _count: usize) -> Self { dbr.get_value() }
 }
 
-impl<R, D> GetResult<D> for Box<[R]>
+impl<R, D> GetResult<D> for Vec<R>
     where R: dbr::DbrMap, D: dbr::Dbr<ResultType=R>
 {
     const COUNT: u64 = 0;
@@ -90,7 +90,7 @@ impl<T> CaGetCore for T where T: dbr::DbrMap {
 }
 
 #[async_trait(?Send)]
-impl<T> CaGetCore for Box<[T]> where T: dbr::DbrMap {
+impl<T> CaGetCore for Vec<T> where T: dbr::DbrMap {
     async fn caget_core(channel: &channel::Channel) -> Self {
         caget_core::<T::ValueDbr, _>(channel).await.0
     }
@@ -108,7 +108,7 @@ impl<T> CaGetCore for (T, StatusSeverity, SystemTime) where T: dbr::DbrMap {
 }
 
 #[async_trait(?Send)]
-impl<T> CaGetCore for (Box<[T]>, StatusSeverity, SystemTime)
+impl<T> CaGetCore for (Vec<T>, StatusSeverity, SystemTime)
     where T: dbr::DbrMap
 {
     async fn caget_core(channel: &channel::Channel) -> Self {
@@ -134,7 +134,7 @@ impl<T> CaGetCore for (T, StatusSeverity, CaCtrl<T::CtrlType>)
 }
 
 #[async_trait(?Send)]
-impl<T> CaGetCore for (Box<[T]>, StatusSeverity, CaCtrl<T::CtrlType>)
+impl<T> CaGetCore for (Vec<T>, StatusSeverity, CaCtrl<T::CtrlType>)
     where T: dbr::DbrMap
 {
     async fn caget_core(channel: &channel::Channel) -> Self {

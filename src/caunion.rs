@@ -31,13 +31,13 @@ pub enum CaUnion {
 }
 
 pub enum CaUnionVec {
-    CaString(Box<[String]>),
-    CaEnum(Box<[CaEnum]>),
-    CaChar(Box<[u8]>),
-    CaShort(Box<[i16]>),
-    CaLong(Box<[i32]>),
-    CaFloat(Box<[f32]>),
-    CaDouble(Box<[f64]>),
+    CaString(Vec<String>),
+    CaEnum(Vec<CaEnum>),
+    CaChar(Vec<u8>),
+    CaShort(Vec<i16>),
+    CaLong(Vec<i32>),
+    CaFloat(Vec<f32>),
+    CaDouble(Vec<f64>),
 }
 
 pub fn get_field_type(field_type: c_short) -> Option<BasicDbrType>

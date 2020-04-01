@@ -24,7 +24,7 @@ fn from_epics_string(string: &[u8]) -> String
 }
 
 #[allow(unused_unsafe)]
-unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Box<[T]>
+unsafe fn c_array_to_vector<T: Copy>(array: &T, count: usize) -> Vec<T>
 {
     let ptr = unsafe { array as *const T };
     let slice = unsafe { std::slice::from_raw_parts(ptr, count) };
@@ -64,7 +64,7 @@ pub trait Dbr {
     type ResultType: Send;
     type ExtraType: Send;
     fn get_value(&self) -> Self::ResultType;
-    fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>;
+    fn get_value_vec(&self, count: usize) -> Vec<Self::ResultType>;
     fn get_extra(&self) -> Self::ExtraType;
 }
 
@@ -85,7 +85,7 @@ macro_rules! string_get_values {
         fn get_value(&self) -> Self::ResultType {
             from_epics_string(&self.value.0)
         }
-        fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>
+        fn get_value_vec(&self, count: usize) -> Vec<Self::ResultType>
         {
             let slice = unsafe {
                 std::slice::from_raw_parts(
@@ -136,7 +136,7 @@ pub struct CaEnum(pub u16);
 macro_rules! enum_get_values {
     {} => {
         fn get_value(&self) -> Self::ResultType { CaEnum(self.value) }
-        fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>
+        fn get_value_vec(&self, count: usize) -> Vec<Self::ResultType>
         {
             let values = unsafe { c_array_to_vector(&self.value, count) };
             values.iter().map(|&x| CaEnum(x)).collect()
@@ -169,7 +169,7 @@ impl Dbr for dbr_time_enum {
 impl Dbr for dbr_ctrl_enum {
     const DATATYPE: i16 = dbr_type_code::DBR_CTRL_ENUM;
     type ResultType = CaEnum;
-    type ExtraType = (StatusSeverity, Box<[String]>);
+    type ExtraType = (StatusSeverity, Vec<String>);
 
     enum_get_values!{}
 
@@ -184,7 +184,7 @@ impl Dbr for dbr_ctrl_enum {
 impl DbrMap for CaEnum {
     type ValueDbr = dbr_enum;
     type TimeDbr = dbr_time_enum;
-    type CtrlType = Box<[String]>;
+    type CtrlType = Vec<String>;
     type CtrlDbr = dbr_ctrl_enum;
 }
 
@@ -209,7 +209,7 @@ pub struct FloatCtrl<T: Copy + Send> {
 macro_rules! scalar_get_values {
     {} => {
         fn get_value(&self) -> Self::ResultType { self.value }
-        fn get_value_vec(&self, count: usize) -> Box<[Self::ResultType]>
+        fn get_value_vec(&self, count: usize) -> Vec<Self::ResultType>
         {
             unsafe { c_array_to_vector(&self.value, count) }
         }
