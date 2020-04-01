@@ -9,9 +9,8 @@ use async_trait::async_trait;
 use cadef::{voidp_to_ref, ref_to_voidp};
 
 pub use std::time::SystemTime;
-pub use db_access::StatusSeverity;
-pub use db_access::CtrlLimits;
-pub use dbr::{CaEnum};
+pub use db_access::{StatusSeverity, CtrlLimits};
+pub use dbr::CaEnum;
 
 
 // Overloaded trait for returning the underlying Dbr value using one of the two

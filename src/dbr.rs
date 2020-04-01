@@ -6,6 +6,7 @@ use std::time::*;
 
 use crate::db_access;
 use db_access::*;
+use db_access::dbr_type_code::*;
 
 
 fn from_epics_string(string: &[u8]) -> String
@@ -59,7 +60,7 @@ fn get_raw_bytes<T: Sized>(value: &T) -> &[u8]
 // Traits defining interface to the dbrs
 
 pub trait Dbr {
-    const DATATYPE: DbrTypeCode;
+    const DATATYPE: i16;
     type ResultType: Send;
     type ExtraType: Send;
     fn get_value(&self) -> Self::ResultType;
@@ -95,7 +96,7 @@ macro_rules! string_get_values {
 }
 
 impl Dbr for dbr_string {
-    const DATATYPE: DbrTypeCode = DbrTypeCode::DBR_STRING;
+    const DATATYPE: i16 = dbr_type_code::DBR_STRING;
     type ResultType = String;
     type ExtraType = ();
 
@@ -105,7 +106,7 @@ impl Dbr for dbr_string {
 }
 
 impl Dbr for dbr_time_string {
-    const DATATYPE: DbrTypeCode = DbrTypeCode::DBR_TIME_STRING;
+    const DATATYPE: i16 = dbr_type_code::DBR_TIME_STRING;
     type ResultType = String;
     type ExtraType = (StatusSeverity, SystemTime);
 
@@ -144,7 +145,7 @@ macro_rules! enum_get_values {
 }
 
 impl Dbr for dbr_enum {
-    const DATATYPE: DbrTypeCode = DBR_ENUM;
+    const DATATYPE: i16 = dbr_type_code::DBR_ENUM;
     type ResultType = CaEnum;
     type ExtraType = ();
 
@@ -154,7 +155,7 @@ impl Dbr for dbr_enum {
 }
 
 impl Dbr for dbr_time_enum {
-    const DATATYPE: DbrTypeCode = DBR_TIME_ENUM;
+    const DATATYPE: i16 = dbr_type_code::DBR_TIME_ENUM;
     type ResultType = CaEnum;
     type ExtraType = (StatusSeverity, SystemTime);
 
@@ -166,7 +167,7 @@ impl Dbr for dbr_time_enum {
 }
 
 impl Dbr for dbr_ctrl_enum {
-    const DATATYPE: DbrTypeCode = DBR_CTRL_ENUM;
+    const DATATYPE: i16 = dbr_type_code::DBR_CTRL_ENUM;
     type ResultType = CaEnum;
     type ExtraType = (StatusSeverity, Box<[String]>);
 
@@ -241,7 +242,7 @@ macro_rules! scalar_dbr {
         $ctrl_type:tt, $ctrl_eval:ident
     } => {
         impl Dbr for $value_dbr {
-            const DATATYPE: DbrTypeCode = $value_const;
+            const DATATYPE: i16 = $value_const;
             type ResultType = $type;
             type ExtraType = ();
 
@@ -251,7 +252,7 @@ macro_rules! scalar_dbr {
         }
 
         impl Dbr for $time_dbr {
-            const DATATYPE: DbrTypeCode = $time_const;
+            const DATATYPE: i16 = $time_const;
             type ResultType = $type;
             type ExtraType = (StatusSeverity, SystemTime);
 
@@ -263,7 +264,7 @@ macro_rules! scalar_dbr {
         }
 
         impl Dbr for $ctrl_dbr {
-            const DATATYPE: DbrTypeCode = $ctrl_const;
+            const DATATYPE: i16 = $ctrl_const;
             type ResultType = $type;
             type ExtraType = (StatusSeverity, $ctrl_type<$type>);
 
@@ -284,7 +285,6 @@ macro_rules! scalar_dbr {
 }
 
 
-use DbrTypeCode::*;
 scalar_dbr!{u8,
     DBR_CHAR,           dbr_char,
     DBR_TIME_CHAR,      dbr_time_char,

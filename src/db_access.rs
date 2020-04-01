@@ -197,27 +197,25 @@ pub struct dbr_ctrl_double {
 }
 
 
-#[allow(non_camel_case_types)]
-#[derive(Debug)]
-pub enum DbrTypeCode {
-    DBR_STRING = 0,
-    DBR_SHORT = 1,
-    DBR_FLOAT = 2,
-    DBR_ENUM = 3,
-    DBR_CHAR = 4,
-    DBR_LONG = 5,
-    DBR_DOUBLE = 6,
-    DBR_TIME_STRING = 14,
-    DBR_TIME_SHORT = 15,
-    DBR_TIME_FLOAT = 16,
-    DBR_TIME_ENUM = 17,
-    DBR_TIME_CHAR = 18,
-    DBR_TIME_LONG = 19,
-    DBR_TIME_DOUBLE = 20,
-    DBR_CTRL_SHORT = 29,
-    DBR_CTRL_FLOAT = 30,
-    DBR_CTRL_ENUM = 31,
-    DBR_CTRL_CHAR = 32,
-    DBR_CTRL_LONG = 33,
-    DBR_CTRL_DOUBLE = 34,
+pub mod dbr_type_code {
+    pub const DBR_STRING: i16 = 0;
+    pub const DBR_SHORT: i16 = 1;
+    pub const DBR_FLOAT: i16 = 2;
+    pub const DBR_ENUM: i16 = 3;
+    pub const DBR_CHAR: i16 = 4;
+    pub const DBR_LONG: i16 = 5;
+    pub const DBR_DOUBLE: i16 = 6;
+    pub const DBR_TIME_STRING: i16 = 14;
+    pub const DBR_TIME_SHORT: i16 = 15;
+    pub const DBR_TIME_FLOAT: i16 = 16;
+    pub const DBR_TIME_ENUM: i16 = 17;
+    pub const DBR_TIME_CHAR: i16 = 18;
+    pub const DBR_TIME_LONG: i16 = 19;
+    pub const DBR_TIME_DOUBLE: i16 = 20;
+    pub const DBR_CTRL_SHORT: i16 = 29;
+    pub const DBR_CTRL_FLOAT: i16 = 30;
+    pub const DBR_CTRL_ENUM: i16 = 31;
+    pub const DBR_CTRL_CHAR: i16 = 32;
+    pub const DBR_CTRL_LONG: i16 = 33;
+    pub const DBR_CTRL_DOUBLE: i16 = 34;
 }
