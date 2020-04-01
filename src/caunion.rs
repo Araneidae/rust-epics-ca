@@ -6,6 +6,7 @@ use crate::db_access;
 use crate::db_access::dbr_type_code;
 use crate::dbr;
 use crate::channel;
+use crate::caget::caget_core;
 
 
 #[derive(Clone, Copy, Debug)]
@@ -63,18 +64,18 @@ pub async fn caget_union(pv: &str) -> CaUnion
     println!("Connected channel: {:?}", datatype);
     match datatype {
         BasicDbrType::DbrString => CaUnion::CaString(
-            crate::caget_core::<db_access::dbr_string, _>(channel).await.0),
+            caget_core::<db_access::dbr_string, _>(channel).await.0),
         BasicDbrType::DbrEnum => CaUnion::CaEnum(
-            crate::caget_core::<db_access::dbr_enum, _>(channel).await.0),
+            caget_core::<db_access::dbr_enum, _>(channel).await.0),
         BasicDbrType::DbrChar => CaUnion::CaChar(
-            crate::caget_core::<db_access::dbr_char, _>(channel).await.0),
+            caget_core::<db_access::dbr_char, _>(channel).await.0),
         BasicDbrType::DbrShort => CaUnion::CaShort(
-            crate::caget_core::<db_access::dbr_short, _>(channel).await.0),
+            caget_core::<db_access::dbr_short, _>(channel).await.0),
         BasicDbrType::DbrLong => CaUnion::CaLong(
-            crate::caget_core::<db_access::dbr_long, _>(channel).await.0),
+            caget_core::<db_access::dbr_long, _>(channel).await.0),
         BasicDbrType::DbrFloat => CaUnion::CaFloat(
-            crate::caget_core::<db_access::dbr_float, _>(channel).await.0),
+            caget_core::<db_access::dbr_float, _>(channel).await.0),
         BasicDbrType::DbrDouble => CaUnion::CaDouble(
-            crate::caget_core::<db_access::dbr_double, _>(channel).await.0),
+            caget_core::<db_access::dbr_double, _>(channel).await.0),
     }
 }

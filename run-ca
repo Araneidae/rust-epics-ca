@@ -8,4 +8,4 @@ export EPICS_LIB_PATH=$EPICS_BASE/lib/$EPICS_HOST_ARCH
 
 export RUSTFLAGS="-Clink-args=-Wl,-rpath=$EPICS_LIB_PATH"
 
-cargo run
+cargo run "$@"
