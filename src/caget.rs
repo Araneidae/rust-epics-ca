@@ -9,7 +9,7 @@ use crate::channel;
 use crate::caunion;
 
 use std::time::SystemTime;
-use crate::db_access::{StatusSeverity, CtrlLimits};
+use crate::db_access::StatusSeverity;
 
 
 // Overloaded trait for returning the underlying Dbr value using one of the two
@@ -57,8 +57,7 @@ extern fn caget_callback<D, T>(args: cadef::event_handler_args)
 }
 
 
-pub async fn caget_core<D, T>(channel: Box<channel::Channel>)
-    -> (T, D::ExtraType)
+async fn caget_core<D, T>(channel: &channel::Channel) -> (T, D::ExtraType)
     where D: dbr::Dbr, T: GetResult<D>
 {
     let waker = callback::AsyncWaker::<(T, D::ExtraType)>::new();
@@ -71,82 +70,93 @@ pub async fn caget_core<D, T>(channel: Box<channel::Channel>)
 }
 
 
-async fn do_caget<D, T>(pv: &str) -> (T, D::ExtraType)
-    where D: dbr::Dbr, T: GetResult<D>
-{
-    let (channel, _datatype, _count) = channel::connect(pv).await;
+// -----------------------------------------------------------------------------
+// Implementation of caget_core for all of the basic target types
 
-    caget_core(channel).await
+#[async_trait(?Send)]
+pub trait CaGetCore {
+    async fn caget_core(channel: &channel::Channel) -> Self;
+}
+
+
+
+// caget_core of undecorated value, either as scalar or vector
+
+#[async_trait(?Send)]
+impl<T> CaGetCore for T where T: dbr::DbrMap {
+    async fn caget_core(channel: &channel::Channel) -> Self {
+        caget_core::<T::ValueDbr, _>(channel).await.0
+    }
+}
+
+#[async_trait(?Send)]
+impl<T> CaGetCore for Box<[T]> where T: dbr::DbrMap {
+    async fn caget_core(channel: &channel::Channel) -> Self {
+        caget_core::<T::ValueDbr, _>(channel).await.0
+    }
+}
+
+
+// caget_core with severity and timestamp
+
+#[async_trait(?Send)]
+impl<T> CaGetCore for (T, StatusSeverity, SystemTime) where T: dbr::DbrMap {
+    async fn caget_core(channel: &channel::Channel) -> Self {
+        let (v, (s, t)) = caget_core::<T::TimeDbr, _>(channel).await;
+        (v, s, t)
+    }
+}
+
+#[async_trait(?Send)]
+impl<T> CaGetCore for (Box<[T]>, StatusSeverity, SystemTime)
+    where T: dbr::DbrMap
+{
+    async fn caget_core(channel: &channel::Channel) -> Self {
+        let (v, (s, t)) = caget_core::<T::TimeDbr, _>(channel).await;
+        (v, s, t)
+    }
+}
+
+
+// caget_core with control field information
+
+#[derive(Clone, Copy, Debug)]
+pub struct CaCtrl<T>(pub T);
+
+#[async_trait(?Send)]
+impl<T> CaGetCore for (T, StatusSeverity, CaCtrl<T::CtrlType>)
+    where T: dbr::DbrMap
+{
+    async fn caget_core(channel: &channel::Channel) -> Self {
+        let (v, (s, c)) = caget_core::<T::CtrlDbr, _>(channel).await;
+        (v, s, CaCtrl(c))
+    }
+}
+
+#[async_trait(?Send)]
+impl<T> CaGetCore for (Box<[T]>, StatusSeverity, CaCtrl<T::CtrlType>)
+    where T: dbr::DbrMap
+{
+    async fn caget_core(channel: &channel::Channel) -> Self {
+        let (v, (s, c)) = caget_core::<T::CtrlDbr, _>(channel).await;
+        (v, s, CaCtrl(c))
+    }
 }
 
 
 // -----------------------------------------------------------------------------
 // caget
 
-// This is the overloaded trait used to implement caget.  We have six separate
-// implementations for each of the available datatypes.
 #[async_trait(?Send)]
 pub trait CA {
     async fn caget(pv: &str) -> Self;
 }
 
-
-// caget of undecorated value, either as scalar or vector
-
 #[async_trait(?Send)]
-impl<T> CA for T where T: dbr::DbrMap {
+impl<T> CA for T where T: CaGetCore {
     async fn caget(pv: &str) -> Self {
-        do_caget::<T::ValueDbr, _>(pv).await.0
-    }
-}
-
-#[async_trait(?Send)]
-impl<T> CA for Box<[T]> where T: dbr::DbrMap {
-    async fn caget(pv: &str) -> Self {
-        do_caget::<T::ValueDbr, _>(pv).await.0
-    }
-}
-
-
-// caget with severity and timestamp
-
-#[async_trait(?Send)]
-impl<T> CA for (T, StatusSeverity, SystemTime) where T: dbr::DbrMap {
-    async fn caget(pv: &str) -> Self {
-        let (v, (s, t)) = do_caget::<T::TimeDbr, _>(pv).await;
-        (v, s, t)
-    }
-}
-
-#[async_trait(?Send)]
-impl<T> CA for (Box<[T]>, StatusSeverity, SystemTime) where T: dbr::DbrMap {
-    async fn caget(pv: &str) -> Self {
-        let (v, (s, t)) = do_caget::<T::TimeDbr, _>(pv).await;
-        (v, s, t)
-    }
-}
-
-
-// caget with control field information
-
-#[derive(Clone, Copy, Debug)]
-pub struct CaCtrl<T>(pub T);
-
-#[async_trait(?Send)]
-impl<T> CA for (T, StatusSeverity, CaCtrl<T::CtrlType>) where T: dbr::DbrMap {
-    async fn caget(pv: &str) -> Self {
-        let (v, (s, c)) = do_caget::<T::CtrlDbr, _>(pv).await;
-        (v, s, CaCtrl(c))
-    }
-}
-
-#[async_trait(?Send)]
-impl<T> CA for (Box<[T]>, StatusSeverity, CaCtrl<T::CtrlType>)
-    where T: dbr::DbrMap
-{
-    async fn caget(pv: &str) -> Self {
-        let (v, (s, c)) = do_caget::<T::CtrlDbr, _>(pv).await;
-        (v, s, CaCtrl(c))
+        let (channel, _datatype, _count) = channel::connect(pv).await;
+        T::caget_core(&channel).await
     }
 }
 

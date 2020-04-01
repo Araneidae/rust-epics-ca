@@ -2,11 +2,10 @@
 
 use libc::c_short;
 
-use crate::db_access;
 use crate::db_access::dbr_type_code;
-use crate::dbr;
+use crate::dbr::CaEnum;
 use crate::channel;
-use crate::caget::caget_core;
+use crate::caget::CaGetCore;
 
 
 #[derive(Clone, Copy, Debug)]
@@ -23,7 +22,7 @@ pub enum BasicDbrType {
 #[derive(Debug, Clone)]
 pub enum CaUnion {
     CaString(String),
-    CaEnum(dbr::CaEnum),
+    CaEnum(CaEnum),
     CaChar(u8),
     CaShort(i16),
     CaLong(i32),
@@ -33,7 +32,7 @@ pub enum CaUnion {
 
 pub enum CaUnionVec {
     CaString(Box<[String]>),
-    CaEnum(Box<[dbr::CaEnum]>),
+    CaEnum(Box<[CaEnum]>),
     CaChar(Box<[u8]>),
     CaShort(Box<[i16]>),
     CaLong(Box<[i32]>),
@@ -60,22 +59,20 @@ pub fn get_field_type(field_type: c_short) -> Option<BasicDbrType>
 pub async fn caget_union(pv: &str) -> CaUnion
 {
     let (channel, datatype, _count) = channel::connect(pv).await;
-
-    println!("Connected channel: {:?}", datatype);
     match datatype {
         BasicDbrType::DbrString => CaUnion::CaString(
-            caget_core::<db_access::dbr_string, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
         BasicDbrType::DbrEnum => CaUnion::CaEnum(
-            caget_core::<db_access::dbr_enum, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
         BasicDbrType::DbrChar => CaUnion::CaChar(
-            caget_core::<db_access::dbr_char, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
         BasicDbrType::DbrShort => CaUnion::CaShort(
-            caget_core::<db_access::dbr_short, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
         BasicDbrType::DbrLong => CaUnion::CaLong(
-            caget_core::<db_access::dbr_long, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
         BasicDbrType::DbrFloat => CaUnion::CaFloat(
-            caget_core::<db_access::dbr_float, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
         BasicDbrType::DbrDouble => CaUnion::CaDouble(
-            caget_core::<db_access::dbr_double, _>(channel).await.0),
+            CaGetCore::caget_core(&channel).await),
     }
 }
