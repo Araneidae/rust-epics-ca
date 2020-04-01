@@ -1,6 +1,6 @@
 [package]
 name = "epics-ca"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["Michael Abbott <michael.abbott@diamond.ac.uk>"]
 edition = "2018"
 
@@ -8,8 +8,8 @@ links = "ca"
 build = "build.rs"
 
 [dependencies]
-libc = "*"
-futures = "*"
-static_assertions = "*"
-async-trait = "*"
-humantime = "*"
+libc = "0.2.67"
+futures = "0.3.4"
+static_assertions = "1.1.0"
+async-trait = "0.1.25"
+humantime = "2.0.0"
