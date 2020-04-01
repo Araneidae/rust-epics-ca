@@ -166,3 +166,38 @@ impl CA for caunion::CaUnion {
         caunion::caget_union(pv).await
     }
 }
+
+#[async_trait(?Send)]
+impl CA for (caunion::CaUnion, StatusSeverity, SystemTime) {
+    async fn caget(pv: &str) -> Self {
+        caunion::caget_union_time(pv).await
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for caunion::CaUnionVec {
+    async fn caget(pv: &str) -> Self {
+        caunion::caget_union_vec(pv).await
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for (caunion::CaUnionVec, StatusSeverity, SystemTime) {
+    async fn caget(pv: &str) -> Self {
+        caunion::caget_union_vec_time(pv).await
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for (caunion::CaUnionCtrl, StatusSeverity) {
+    async fn caget(pv: &str) -> Self {
+        caunion::caget_union_ctrl(pv).await
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for (caunion::CaUnionCtrlVec, StatusSeverity) {
+    async fn caget(pv: &str) -> Self {
+        caunion::caget_union_ctrl_vec(pv).await
+    }
+}

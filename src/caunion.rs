@@ -1,11 +1,13 @@
 // Definitions for union type
 
 use libc::c_short;
+use std::time::SystemTime;
 
 use crate::db_access::dbr_type_code;
-use crate::dbr::CaEnum;
+use crate::db_access::StatusSeverity;
+use crate::dbr::{CaEnum, FixedCtrl, FloatCtrl};
 use crate::channel;
-use crate::caget::CaGetCore;
+use crate::caget::{CaGetCore, CaCtrl};
 
 
 #[derive(Clone, Copy, Debug)]
@@ -30,6 +32,7 @@ pub enum CaUnion {
     CaDouble(f64),
 }
 
+#[derive(Debug, Clone)]
 pub enum CaUnionVec {
     CaString(Vec<String>),
     CaEnum(Vec<CaEnum>),
@@ -39,6 +42,29 @@ pub enum CaUnionVec {
     CaFloat(Vec<f32>),
     CaDouble(Vec<f64>),
 }
+
+#[derive(Debug)]
+pub enum CaUnionCtrl {
+    CaString(String, SystemTime),
+    CaEnum(CaEnum, Vec<String>),
+    CaChar(u8, FixedCtrl<u8>),
+    CaShort(i16, FixedCtrl<i16>),
+    CaLong(i32, FixedCtrl<i32>),
+    CaFloat(f32, FloatCtrl<f32>),
+    CaDouble(f64, FloatCtrl<f64>),
+}
+
+#[derive(Debug)]
+pub enum CaUnionCtrlVec {
+    CaString(Vec<String>, SystemTime),
+    CaEnum(Vec<CaEnum>, Vec<String>),
+    CaChar(Vec<u8>, FixedCtrl<u8>),
+    CaShort(Vec<i16>, FixedCtrl<i16>),
+    CaLong(Vec<i32>, FixedCtrl<i32>),
+    CaFloat(Vec<f32>, FloatCtrl<f32>),
+    CaDouble(Vec<f64>, FloatCtrl<f64>),
+}
+
 
 pub fn get_field_type(field_type: c_short) -> Option<BasicDbrType>
 {
@@ -56,23 +82,97 @@ pub fn get_field_type(field_type: c_short) -> Option<BasicDbrType>
     }
 }
 
+
+macro_rules! map_caget_over_union {
+    { $pv:expr, $action:ident } => {
+        let (channel, datatype, _count) = channel::connect($pv).await;
+        match datatype {
+            BasicDbrType::DbrString => $action!(channel, CaString),
+            BasicDbrType::DbrEnum   => $action!(channel, CaEnum),
+            BasicDbrType::DbrChar   => $action!(channel, CaChar),
+            BasicDbrType::DbrShort  => $action!(channel, CaShort),
+            BasicDbrType::DbrLong   => $action!(channel, CaLong),
+            BasicDbrType::DbrFloat  => $action!(channel, CaFloat),
+            BasicDbrType::DbrDouble => $action!(channel, CaDouble),
+        }
+    }
+}
+
 pub async fn caget_union(pv: &str) -> CaUnion
 {
-    let (channel, datatype, _count) = channel::connect(pv).await;
-    match datatype {
-        BasicDbrType::DbrString => CaUnion::CaString(
-            CaGetCore::caget_core(&channel).await),
-        BasicDbrType::DbrEnum => CaUnion::CaEnum(
-            CaGetCore::caget_core(&channel).await),
-        BasicDbrType::DbrChar => CaUnion::CaChar(
-            CaGetCore::caget_core(&channel).await),
-        BasicDbrType::DbrShort => CaUnion::CaShort(
-            CaGetCore::caget_core(&channel).await),
-        BasicDbrType::DbrLong => CaUnion::CaLong(
-            CaGetCore::caget_core(&channel).await),
-        BasicDbrType::DbrFloat => CaUnion::CaFloat(
-            CaGetCore::caget_core(&channel).await),
-        BasicDbrType::DbrDouble => CaUnion::CaDouble(
-            CaGetCore::caget_core(&channel).await),
+    macro_rules! caget_union {
+        ( $channel:expr, $result:ident ) => {
+            CaUnion::$result(CaGetCore::caget_core(&$channel).await)
+        }
     }
+
+    map_caget_over_union!{pv, caget_union}
+}
+
+pub async fn caget_union_time(pv: &str) -> (CaUnion, StatusSeverity, SystemTime)
+{
+    macro_rules! caget_union_time {
+        ( $channel:expr, $result:ident ) => {
+            {
+                let (v, s, t) = CaGetCore::caget_core(&$channel).await;
+                (CaUnion::$result(v), s, t)
+            }
+        }
+    }
+
+    map_caget_over_union!{pv, caget_union_time}
+}
+
+pub async fn caget_union_vec(pv: &str) -> CaUnionVec
+{
+    macro_rules! caget_union_vec {
+        ( $channel:expr, $result:ident ) => {
+            CaUnionVec::$result(CaGetCore::caget_core(&$channel).await)
+        }
+    }
+
+    map_caget_over_union!{pv, caget_union_vec}
+}
+
+pub async fn caget_union_vec_time(pv: &str)
+    -> (CaUnionVec, StatusSeverity, SystemTime)
+{
+    macro_rules! caget_union_vec_time {
+        ( $channel:expr, $result:ident ) => {
+            {
+                let (v, s, t) = CaGetCore::caget_core(&$channel).await;
+                (CaUnionVec::$result(v), s, t)
+            }
+        }
+    }
+
+    map_caget_over_union!{pv, caget_union_vec_time}
+}
+
+pub async fn caget_union_ctrl(pv: &str) -> (CaUnionCtrl, StatusSeverity)
+{
+    macro_rules! caget_union_ctrl {
+        ( $channel:expr, $result:ident ) => {
+            {
+                let (v, s, CaCtrl(c)) = CaGetCore::caget_core(&$channel).await;
+                (CaUnionCtrl::$result(v, c), s)
+            }
+        }
+    }
+
+    map_caget_over_union!{pv, caget_union_ctrl}
+}
+
+pub async fn caget_union_ctrl_vec(pv: &str) -> (CaUnionCtrlVec, StatusSeverity)
+{
+    macro_rules! caget_union_ctrl_vec {
+        ( $channel:expr, $result:ident ) => {
+            {
+                let (v, s, CaCtrl(c)) = CaGetCore::caget_core(&$channel).await;
+                (CaUnionCtrlVec::$result(v, c), s)
+            }
+        }
+    }
+
+    map_caget_over_union!{pv, caget_union_ctrl_vec}
 }

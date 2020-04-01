@@ -12,5 +12,5 @@ mod caget;
 pub use std::time::SystemTime;
 pub use db_access::{StatusSeverity, CtrlLimits};
 pub use dbr::CaEnum;
-pub use caunion::CaUnion;
+pub use caunion::{CaUnion, CaUnionVec, CaUnionCtrl, CaUnionCtrlVec};
 pub use caget::{CA, CaCtrl};

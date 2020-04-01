@@ -41,7 +41,11 @@ fn main()
 
         let result: CaUnion = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
+        let result: (CaUnion, _, SystemTime) = CA::caget(pv).await;
+        println!("Caget: {} => {:#?}", pv, result);
+        let result: CaUnionVec = CA::caget(pv).await;
+        println!("Caget: {} => {:#?}", pv, result);
+        let result: (CaUnionCtrlVec, _) = CA::caget(pv).await;
+        println!("Caget: {} => {:#?}", pv, result);
     });
 }
-
-// Try: unions, and async gather
