@@ -38,6 +38,9 @@ fn main()
         println!("Caget: {} => {:#?}", pv, result);
         let result: (CaEnum, _, CaCtrl<_>) = CA::caget(pv).await;
         println!("Caget: {} => {:#?}", pv, result);
+
+        let result: CaUnion = CA::caget(pv).await;
+        println!("Caget: {} => {:#?}", pv, result);
     });
 }
 

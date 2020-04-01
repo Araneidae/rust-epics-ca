@@ -5,18 +5,8 @@ use static_assertions::*;
 
 use crate::cadef as cadef;
 use crate::cadef::{ChanId, ref_to_voidp, voidp_to_ref};
-
-
-#[derive(Debug, Clone, Copy)]
-pub enum BasicDbrType {
-    DbrString,
-    DbrShort,
-    DbrFloat,
-    DbrEnum,
-    DbrChar,
-    DbrLong,
-    DbrDouble,
-}
+use crate::caunion;
+use crate::caunion::BasicDbrType;
 
 
 // When we have a connected channel we snapshot the underlying data type and
@@ -48,17 +38,7 @@ assert_impl_all!(Channel: Send);
 
 fn get_field_type(id: ChanId) -> Option<BasicDbrType>
 {
-    match unsafe { cadef::ca_field_type(id) } {
-        0 => Some(BasicDbrType::DbrString),
-        1 => Some(BasicDbrType::DbrShort),
-        2 => Some(BasicDbrType::DbrFloat),
-        3 => Some(BasicDbrType::DbrEnum),
-        4 => Some(BasicDbrType::DbrChar),
-        5 => Some(BasicDbrType::DbrLong),
-        6 => Some(BasicDbrType::DbrDouble),
-        // None of the above.  Probably unexpectedly disconnected
-        _ => None,
-    }
+    caunion::get_field_type(unsafe { cadef::ca_field_type(id) })
 }
 
 fn get_element_count(id: ChanId) -> Option<usize>

@@ -5,12 +5,16 @@ mod dbr;
 mod channel;
 mod callback;
 
+mod caunion;
+
+
 use async_trait::async_trait;
 use cadef::{voidp_to_ref, ref_to_voidp};
 
 pub use std::time::SystemTime;
 pub use db_access::{StatusSeverity, CtrlLimits};
 pub use dbr::CaEnum;
+pub use caunion::CaUnion;
 
 
 // Overloaded trait for returning the underlying Dbr value using one of the two
@@ -19,7 +23,7 @@ pub use dbr::CaEnum;
 // Here R is the underlying datatype associated with the Dbr D, and E is the
 // extra (timestamp+severity or control) data for the Dbr.  The implementing
 // datatype Self will be either R or Vec<R>.
-trait GetResult<D: dbr::Dbr>: Send {
+pub trait GetResult<D: dbr::Dbr>: Send {
     const COUNT: u64;
     fn get_result(dbr: &D, count: usize) -> Self;
 }
@@ -57,11 +61,11 @@ extern fn caget_callback<D, T>(args: cadef::event_handler_args)
     waker.wake(result);
 }
 
-async fn do_caget<D, T>(pv: &str) -> (T, D::ExtraType)
+
+pub async fn caget_core<D, T>(channel: Box<channel::Channel>)
+    -> (T, D::ExtraType)
     where D: dbr::Dbr, T: GetResult<D>
 {
-    let (channel, _datatype, _count) = channel::connect(pv).await;
-
     let waker = callback::AsyncWaker::<(T, D::ExtraType)>::new();
     let rc = unsafe { cadef::ca_array_get_callback(
         D::DATATYPE as i64, T::COUNT, channel.id,
@@ -69,6 +73,15 @@ async fn do_caget<D, T>(pv: &str) -> (T, D::ExtraType)
     assert!(rc == 1);
     unsafe { cadef::ca_flush_io() };
     waker.wait_for().await
+}
+
+
+async fn do_caget<D, T>(pv: &str) -> (T, D::ExtraType)
+    where D: dbr::Dbr, T: GetResult<D>
+{
+    let (channel, _datatype, _count) = channel::connect(pv).await;
+
+    caget_core(channel).await
 }
 
 
@@ -139,5 +152,12 @@ impl<T> CA for (Box<[T]>, StatusSeverity, CaCtrl<T::CtrlType>)
     async fn caget(pv: &str) -> Self {
         let (v, (s, c)) = do_caget::<T::CtrlDbr, _>(pv).await;
         (v, s, CaCtrl(c))
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for CaUnion {
+    async fn caget(pv: &str) -> Self {
+        caunion::caget_union(pv).await
     }
 }

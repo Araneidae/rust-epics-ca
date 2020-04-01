@@ -130,7 +130,7 @@ impl DbrMap for String {
 // Enum type
 
 #[repr(transparent)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CaEnum(pub u16);
 
 macro_rules! enum_get_values {
