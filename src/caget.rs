@@ -6,7 +6,6 @@ use crate::cadef;
 use crate::dbr;
 use crate::callback;
 use crate::channel;
-use crate::caunion;
 
 use std::time::SystemTime;
 use crate::db_access::StatusSeverity;
@@ -157,47 +156,5 @@ impl<T> CA for T where T: CaGetCore {
     async fn caget(pv: &str) -> Self {
         let (channel, _datatype, _count) = channel::connect(pv).await;
         T::caget_core(&channel).await
-    }
-}
-
-#[async_trait(?Send)]
-impl CA for caunion::CaUnion {
-    async fn caget(pv: &str) -> Self {
-        caunion::caget_union(pv).await
-    }
-}
-
-#[async_trait(?Send)]
-impl CA for (caunion::CaUnion, StatusSeverity, SystemTime) {
-    async fn caget(pv: &str) -> Self {
-        caunion::caget_union_time(pv).await
-    }
-}
-
-#[async_trait(?Send)]
-impl CA for caunion::CaUnionVec {
-    async fn caget(pv: &str) -> Self {
-        caunion::caget_union_vec(pv).await
-    }
-}
-
-#[async_trait(?Send)]
-impl CA for (caunion::CaUnionVec, StatusSeverity, SystemTime) {
-    async fn caget(pv: &str) -> Self {
-        caunion::caget_union_vec_time(pv).await
-    }
-}
-
-#[async_trait(?Send)]
-impl CA for (caunion::CaUnionCtrl, StatusSeverity) {
-    async fn caget(pv: &str) -> Self {
-        caunion::caget_union_ctrl(pv).await
-    }
-}
-
-#[async_trait(?Send)]
-impl CA for (caunion::CaUnionCtrlVec, StatusSeverity) {
-    async fn caget(pv: &str) -> Self {
-        caunion::caget_union_ctrl_vec(pv).await
     }
 }

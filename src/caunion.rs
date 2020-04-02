@@ -2,12 +2,13 @@
 
 use libc::c_short;
 use std::time::SystemTime;
+use async_trait::async_trait;
 
 use crate::db_access::dbr_type_code;
 use crate::db_access::StatusSeverity;
 use crate::dbr::{CaEnum, FixedCtrl, FloatCtrl};
 use crate::channel;
-use crate::caget::{CaGetCore, CaCtrl};
+use crate::caget::{CaGetCore, CaCtrl, CA};
 
 
 #[derive(Clone, Copy, Debug)]
@@ -98,81 +99,95 @@ macro_rules! map_caget_over_union {
     }
 }
 
-pub async fn caget_union(pv: &str) -> CaUnion
-{
-    macro_rules! caget_union {
-        ( $channel:expr, $result:ident ) => {
-            CaUnion::$result(CaGetCore::caget_core(&$channel).await)
-        }
-    }
 
-    map_caget_over_union!{pv, caget_union}
-}
-
-pub async fn caget_union_time(pv: &str) -> (CaUnion, StatusSeverity, SystemTime)
-{
-    macro_rules! caget_union_time {
-        ( $channel:expr, $result:ident ) => {
-            {
-                let (v, s, t) = CaGetCore::caget_core(&$channel).await;
-                (CaUnion::$result(v), s, t)
+#[async_trait(?Send)]
+impl CA for CaUnion {
+    async fn caget(pv: &str) -> Self {
+        macro_rules! do_caget {
+            ( $channel:expr, $result:ident ) => {
+                CaUnion::$result(CaGetCore::caget_core(&$channel).await)
             }
         }
-    }
 
-    map_caget_over_union!{pv, caget_union_time}
+        map_caget_over_union!{pv, do_caget}
+    }
 }
 
-pub async fn caget_union_vec(pv: &str) -> CaUnionVec
-{
-    macro_rules! caget_union_vec {
-        ( $channel:expr, $result:ident ) => {
-            CaUnionVec::$result(CaGetCore::caget_core(&$channel).await)
-        }
-    }
-
-    map_caget_over_union!{pv, caget_union_vec}
-}
-
-pub async fn caget_union_vec_time(pv: &str)
-    -> (CaUnionVec, StatusSeverity, SystemTime)
-{
-    macro_rules! caget_union_vec_time {
-        ( $channel:expr, $result:ident ) => {
-            {
-                let (v, s, t) = CaGetCore::caget_core(&$channel).await;
-                (CaUnionVec::$result(v), s, t)
+#[async_trait(?Send)]
+impl CA for (CaUnion, StatusSeverity, SystemTime) {
+    async fn caget(pv: &str) -> Self {
+        macro_rules! do_caget {
+            ( $channel:expr, $result:ident ) => {
+                {
+                    let (v, s, t) = CaGetCore::caget_core(&$channel).await;
+                    (CaUnion::$result(v), s, t)
+                }
             }
         }
-    }
 
-    map_caget_over_union!{pv, caget_union_vec_time}
+        map_caget_over_union!{pv, do_caget}
+    }
 }
 
-pub async fn caget_union_ctrl(pv: &str) -> (CaUnionCtrl, StatusSeverity)
-{
-    macro_rules! caget_union_ctrl {
-        ( $channel:expr, $result:ident ) => {
-            {
-                let (v, s, CaCtrl(c)) = CaGetCore::caget_core(&$channel).await;
-                (CaUnionCtrl::$result(v, c), s)
+#[async_trait(?Send)]
+impl CA for CaUnionVec {
+    async fn caget(pv: &str) -> Self {
+        macro_rules! do_caget {
+            ( $channel:expr, $result:ident ) => {
+                CaUnionVec::$result(CaGetCore::caget_core(&$channel).await)
             }
         }
-    }
 
-    map_caget_over_union!{pv, caget_union_ctrl}
+        map_caget_over_union!{pv, do_caget}
+    }
 }
 
-pub async fn caget_union_ctrl_vec(pv: &str) -> (CaUnionCtrlVec, StatusSeverity)
-{
-    macro_rules! caget_union_ctrl_vec {
-        ( $channel:expr, $result:ident ) => {
-            {
-                let (v, s, CaCtrl(c)) = CaGetCore::caget_core(&$channel).await;
-                (CaUnionCtrlVec::$result(v, c), s)
+#[async_trait(?Send)]
+impl CA for (CaUnionVec, StatusSeverity, SystemTime) {
+    async fn caget(pv: &str) -> Self {
+        macro_rules! do_caget {
+            ( $channel:expr, $result:ident ) => {
+                {
+                    let (v, s, t) = CaGetCore::caget_core(&$channel).await;
+                    (CaUnionVec::$result(v), s, t)
+                }
             }
         }
-    }
 
-    map_caget_over_union!{pv, caget_union_ctrl_vec}
+        map_caget_over_union!{pv, do_caget}
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for (CaUnionCtrl, StatusSeverity) {
+    async fn caget(pv: &str) -> Self {
+        macro_rules! do_caget {
+            ( $channel:expr, $result:ident ) => {
+                {
+                    let (v, s, CaCtrl(c)) =
+                        CaGetCore::caget_core(&$channel).await;
+                    (CaUnionCtrl::$result(v, c), s)
+                }
+            }
+        }
+
+        map_caget_over_union!{pv, do_caget}
+    }
+}
+
+#[async_trait(?Send)]
+impl CA for (CaUnionCtrlVec, StatusSeverity) {
+    async fn caget(pv: &str) -> Self {
+        macro_rules! do_caget {
+            ( $channel:expr, $result:ident ) => {
+                {
+                    let (v, s, CaCtrl(c)) =
+                        CaGetCore::caget_core(&$channel).await;
+                    (CaUnionCtrlVec::$result(v, c), s)
+                }
+            }
+        }
+
+        map_caget_over_union!{pv, do_caget}
+    }
 }
